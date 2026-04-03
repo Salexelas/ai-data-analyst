@@ -1,0 +1,16 @@
+que hace config.yaml
+falta readme
+corregir postgres
+lista de opciones   repetidas en main 2 veces en main y en factory.... evitar else if else if 
+guardar primera capa
+main no tienen funciones, corregir mas de 100 lineas
+agregar a cada script un encabezado , que hace 
+en los conectores hay metodos que se repiten contastemnte , abrtraccion o planilla o interface???
+crear domuento para reforzar readme
+Explicacion de cada bloque de carpetas(Core , Agents,  connectors)
+nivel de scrips , lineas y complejidad total
+
+
+
+
+seguir semantica
