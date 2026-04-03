@@ -12,7 +12,7 @@ st.write("Conectá tu fuente de datos en segundos")
 
 source_type = st.selectbox(
     "Seleccioná tipo de fuente",
-    ["duckdb", "postgres", "mysql", "excel", "csv", "api"]
+    ["duckdb", "postgres", "mysql", "excel", "csv","google_sheets" ,"api"]
 )
 
 config = {}
@@ -22,13 +22,36 @@ config = {}
 # -------------------------
 
 if source_type == "duckdb":
-    config["path"] = st.text_input("Ruta DB", "data/sample.duckdb")
+    use_demo = st.checkbox("Usar tabla demo (sin subir archivo)", value=True)
 
-elif source_type == "postgres":
-    config["uri"] = st.text_input("URI", "postgresql://user:pass@localhost/db")
+    uploaded_file = None
+    if not use_demo:
+        uploaded_file = st.file_uploader(
+            "Subí CSV/Parquet",
+            type=["csv", "parquet"]
+        )
 
-elif source_type == "mysql":
-    config["uri"] = st.text_input("URI", "mysql://user:pass@localhost/db")
+    # Guardar en config
+    if uploaded_file:
+        config["file"] = uploaded_file
+    elif use_demo:
+        config["file"] = None  # DuckDBConnector detecta None y carga demo
+
+elif source_type in ["postgres", "mysql"]:
+    use_demo = st.checkbox("Usar tabla demo (sin conexión real)", value=True)
+
+    if use_demo:
+        config["uri"] = None  # el conector detecta None y carga demo
+    else:
+        default_uri = (
+            "postgresql://user:pass@localhost:5432/db"
+            if source_type == "postgres"
+            else "mysql+pymysql://user:pass@localhost:3306/db"
+        )
+        config["uri"] = st.text_input("🔗 Pegá tu Connection String", default_uri)
+
+elif source_type == "google_sheets":
+    config["url"] = st.text_input("Pegá tu Google Sheet")
 
 elif source_type == "api":
     config["base_url"] = st.text_input("Base URL", "https://api.example.com")
@@ -78,6 +101,9 @@ if st.button("🚀 Conectar"):
         # Columnas detectadas (pro level)
         st.subheader("🧠 Columnas detectadas")
         st.write(list(preview.columns))
+
+        st.subheader("📊 Tipos de datos")
+        st.write(preview.dtypes)
 
         # Guardar en session
         st.session_state["connector"] = connector

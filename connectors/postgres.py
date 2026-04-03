@@ -15,9 +15,27 @@ class PostgresConnector(BaseConnector):
         query = """
         SELECT table_name, column_name, data_type
         FROM information_schema.columns
+        WHERE table_schema = 'public'
+        ORDER BY table_name
         """
         return self.execute(query)
     
     def preview(self, limit=10):
-        query = f"SELECT * FROM information_schema.tables LIMIT 1"
+        tables = self.get_tables()
+
+        if not tables:
+            return pd.DataFrame({"error": ["No hay tablas en schema public"]})
+
+        table = tables[0]
+
+        query = f"SELECT * FROM {table} LIMIT {limit}"
         return self.execute(query)
+    
+    def get_tables(self):
+        query = """
+        SELECT table_name
+        FROM information_schema.tables
+        WHERE table_schema = 'public'
+        """
+        df = self.execute(query)
+        return df["table_name"].tolist()
