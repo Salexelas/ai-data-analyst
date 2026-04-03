@@ -10,3 +10,6 @@ streamlit
 tqdm
 faiss-cpu
 sentence-transformers
+streamlit
+requests
+python-dotenv
