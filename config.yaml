@@ -1,0 +1,17 @@
+data_source:
+  type: duckdb  # duckdb | postgres | mysql | api | excel
+
+duckdb:
+  path: data/sample.csv
+
+postgres:
+  uri: postgresql://user:pass@localhost:5432/db
+
+mysql:
+  uri: mysql+pymysql://user:pass@localhost:3306/db
+
+api:
+  base_url: https://api.example.com
+
+excel:
+  path: data/sample.xlsx

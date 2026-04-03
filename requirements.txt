@@ -1,0 +1,12 @@
+pandas
+duckdb
+sqlalchemy
+psycopg2-binary
+pymysql
+requests
+pyyaml
+openai
+streamlit
+tqdm
+faiss-cpu
+sentence-transformers
