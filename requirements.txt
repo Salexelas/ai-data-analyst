@@ -13,3 +13,4 @@ sentence-transformers
 streamlit
 requests
 python-dotenv
+radon

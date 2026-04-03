@@ -1,0 +1,9 @@
+que hace config.yaml
+falta readme
+corregir postgres
+lista de opciones   repetidas en main 2 veces en main y en factory.... evitar else if else if 
+guardar primera capa
+main no tienen funciones
+
+
+seguir semantica

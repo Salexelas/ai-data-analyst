@@ -1,0 +1,113 @@
+*- Consultar los 20 primeros Radon 
+
+radon cc app/ --min A -s | ForEach-Object {
+    if ($_ -match '\((\d+)\)$') {
+        $score = [int]$matches[1]
+        [pscustomobject]@{
+            Line     = $_
+            Score    = $score
+        }
+    }
+} | Sort-Object -Property Score -Descending | Select-Object -First 30 | ForEach-Object {
+    $_.Line
+}
+
+
+////////////////////////////////
+
+
+lista de scrtips con mas lineas
+
+Get-ChildItem -Recurse -Include *.py -Path app | ForEach-Object {
+    $lineCount = (Get-Content $_.FullName).Count
+    if ($lineCount -gt 39) {
+        [PSCustomObject]@{
+            File       = $_.FullName
+            LineCount  = $lineCount
+        }
+    }
+} | Sort-Object LineCount -Descending | Format-Table -AutoSize
+
+
+
+
+///////////////////////////////////////////
+
+eliminar py cache
+
+
+Get-ChildItem -Path . -Recurse -Directory -Filter "__pycache__" | Remove-Item -Recurse -Force
+
+
+///////////////////////////////////////  grep /////
+
+Get-ChildItem -Recurse -Include *.py | Select-String 'st\.experimental_rerun\(\)'
+
+
+////////////////volver ultimo comit////////////
+
+git reset --hard HEAD
+git clean -fd
+
+////////////////////////como saber cuantos scrytips hay/////////////
+
+Get-ChildItem -Path .\app\ -Recurse -Filter *.py | Measure-Object | Select-Object -ExpandProperty Count
+
+
+
+////////////////////////////////////////////
+
+Get-ChildItem -Path .\app\ -Recurse -Filter *tarea*.py | Measure-Object | Select-Object -ExpandProperty Count
+
+Get-ChildItem -Path .\app\ -Recurse -Filter *task*.py
+
+
+///////////////////////////////////////
+
+duplicado
+
+pylint --disable=all --enable=duplicate-code .
+
+
+///////////////////////////////////
+
+python3 -m streamlit run main.py
+
+
+
+////////////////// visual code window radon ///////////////////
+
+radon cc .\agents .\connectors .\core -s -a
+
+////////////////////////   fin visual code window radon///////////////////////////////////////
+
+
+////////////////////Codespace/////////////
+
+lista las 20 con peor puntaje en radon 
+
+radon cc app/ -s -a | sort -t '(' -k2 -nr | head -n 20
+
+
+            /////////  contador scritps ///////
+            find app/ -name "*.py" | wc -l
+
+    ////////////////   contador lineas //////////////////
+
+    find app/ -name "*.py" -exec wc -l {} + | sort -nr | head -n 20
+
+
+    ///////////// para traer todas las funciones //////////
+
+    grep -RnP '^def\s+\w+' . --include="*.py" \
+  | sed -E 's|(.*):[0-9]+:def ([a-zA-Z0-9_]+).*|\2 \1|' \
+  | sort -k1,1
+
+    /////////////////// tree /////////////
+    tree -L 5 -I "__pycache__|*.pyc|.git|.venv"
+
+
+    Get-ChildItem -Path . -Directory | ForEach-Object {
+    Write-Host $_.Name
+    Get-ChildItem $_.FullName -File | ForEach-Object { Write-Host "  $_" }
+}
