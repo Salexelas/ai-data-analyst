@@ -1,3 +1,20 @@
+//////////////////////// obtener estructura (tree)//////////////////////////////////
+
+Get-ChildItem -Directory | Where-Object { $_.Name -ne "venv" } | ForEach-Object {
+    $_.Name
+    Get-ChildItem $_.FullName | Where-Object { $_.Name -ne "__pycache__" } | ForEach-Object {
+        "  " + $_.Name
+    }
+} > estructura.txt
+
+
+
+/////////////////////////////fin obtener estructura (tree) /////////////////////////////////
+
+
+
+
+
 *- Consultar los 20 primeros Radon 
 
 radon cc app/ --min A -s | ForEach-Object {

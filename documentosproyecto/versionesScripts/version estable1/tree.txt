@@ -1,0 +1,19 @@
+agents 
+  router.py 
+  sql_agent.py
+connectors
+  api.py
+  base.py
+  csv.py 
+  duckdb.py
+  excel.py
+  factory.py
+  googleSheets.py
+  mysql.py
+  postgres.py 
+core
+  llm.py
+documentosproyecto
+  tree.txt
+venv
+  pyvenv.cfg 

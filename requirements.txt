@@ -14,3 +14,4 @@ streamlit
 requests
 python-dotenv
 radon
+pylint

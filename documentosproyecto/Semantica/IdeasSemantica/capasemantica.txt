@@ -1,0 +1,447 @@
+1️⃣ Qué es la capa semántica
+
+La capa semántica es básicamente un mapa inteligente de tus datos. Te permite abstraer:
+
+Tablas
+Columnas
+Tipos de datos
+Significados o alias semánticos
+Relaciones entre tablas (opcional: FK, joins típicos)
+
+Objetivo:
+
+Que el LLM sepa qué columnas existen y cómo se llaman, evitando errores de SQL.
+Que puedas traducir términos de negocio a nombres técnicos.
+Que la UI pueda mostrar sugerencias automáticas para el usuario.
+2️⃣ Estructura modular y granular
+a) Representación interna
+
+Podés tener algo como un dict o un mini DuckDB/SQLite como catálogo:
+
+semantic_layer = {
+    "ventas": {
+        "columns": {
+            "fecha": {"type": "date", "alias": "Fecha de venta"},
+            "producto": {"type": "string", "alias": "Producto"},
+            "cantidad": {"type": "int", "alias": "Cantidad vendida"},
+            "precio": {"type": "float", "alias": "Precio unitario"},
+        },
+        "table_alias": "Ventas"
+    },
+    "nba_stats": {
+        "columns": {
+            "player": {"type": "string", "alias": "Jugador"},
+            "team": {"type": "string", "alias": "Equipo"},
+            "pts": {"type": "int", "alias": "Puntos"},
+            "reb": {"type": "int", "alias": "Rebotes"},
+            "ast": {"type": "int", "alias": "Asistencias"},
+        },
+        "table_alias": "NBA Estadísticas"
+    }
+}
+b) Por qué modular y granular
+Tabla a tabla: cada dataset tiene su propio nodo en la capa semántica.
+Columna a columna: cada campo tiene tipo y alias opcional.
+Esto permite que el LLM no tenga que aprender todo el dataset de golpe: se pasa solo el contexto relevante.
+Si cambias o subes un CSV distinto, podés actualizar solo esa tabla.
+3️⃣ Cómo se construye dinámicamente desde la UI
+Detectar el schema al conectar la fuente
+schema_df = connector.get_schema()
+# ejemplo para DuckDB/CSV/Excel
+semantic_table = {}
+for col, dtype in zip(schema_df["column_name"], schema_df["data_type"]):
+    semantic_table[col.lower()] = {"type": dtype, "alias": col.title()}
+Permitir edición desde UI
+Streamlit puede mostrar un formulario de edición de alias:
+import streamlit as st
+
+st.subheader("🧩 Configurar alias semánticos")
+
+for col, info in semantic_table.items():
+    new_alias = st.text_input(f"Alias para {col}", value=info["alias"])
+    semantic_table[col]["alias"] = new_alias
+Así, un usuario puede renombrar pts a Puntos o reb a Rebotes.
+Guardar la configuración
+Puede guardarse en st.session_state["semantic_layer"] o persistirse en un archivo JSON/DB.
+Esto permite que la próxima vez que conecte el mismo dataset, la UI recupere alias y metadata.
+4️⃣ Cómo integrar con el LLM/SQL Agent
+
+Cuando el LLM genera SQL:
+
+Primero se filtra la pregunta para mapear términos semánticos:
+def map_semantics(question, semantic_layer, table_name):
+    table = semantic_layer[table_name]
+    for col, info in table["columns"].items():
+        question = question.replace(info["alias"], col)
+    return question
+Luego el prompt puede incluir la capa semántica como contexto:
+prompt = f"""
+You are a SQL expert.
+
+Schema: {semantic_layer[table_name]}
+
+User question: {question_mapped}
+
+Return ONLY valid SQL.
+"""
+Finalmente, después de generar SQL, pasarlo por guardrails para validar columnas, tipos y comandos peligrosos.
+5️⃣ Dinámica con distintos datasets
+Ejemplo: ventas
+Columnas: fecha, producto, cantidad, precio
+Alias semánticos: Fecha de venta, Producto, Cantidad vendida, Precio unitario
+Usuario pregunta: “Total de ventas por producto en enero”
+LLM recibe: columnas alias + tabla “Ventas” → genera SQL correcto:
+SELECT producto, SUM(cantidad*precio) 
+FROM ventas 
+WHERE fecha BETWEEN '2026-01-01' AND '2026-01-31'
+GROUP BY producto
+Ejemplo: NBA stats
+Columnas: player, team, pts, reb, ast
+Alias: Jugador, Equipo, Puntos, Rebotes, Asistencias
+Usuario pregunta: “Quién tiene más puntos promedio por partido”
+LLM recibe: contexto semántico → genera SQL correcto sobre nba_stats.
+
+Conclusión: La misma capa semántica modular funciona para cualquier dataset. Solo cambian tabla, columnas y alias.
+
+6️⃣ Buenas prácticas
+Tabla por tabla: cada dataset independiente → fácil versionar.
+Columnas con tipo y alias → evita errores y mejora UX.
+Guardrails SQL → protección antes de ejecutar.
+Persistencia → guardar alias semánticos para reutilización.
+UI friendly → formulario editable de alias y previews dinámicos.
+Capa semántica + LLM → prompt más confiable y seguro.
+
+💡 Extra pro tip: Podés crear un mini DuckDB local para la capa semántica, así incluso podés hacer joins automáticos entre tablas de distintos datasets y el LLM solo recibe “lo que tiene sentido” para esa pregunta.
+
+
+
+
+/////////////////////no tienen sentido///////////////
+
+
+1️⃣ Mini DuckDB local para la capa semántica
+
+La idea es usar un DuckDB en memoria como un “catálogo” de tus datasets:
+
+Cada tabla que suba el usuario se registra en esta base como una tabla semántica, con columnas y alias.
+Esto permite consultar metadatos de forma SQL, hacer joins entre tablas distintas y mantener todo centralizado.
+Ventaja: el LLM solo recibe las columnas relevantes y el usuario puede ver y editar alias fácilmente.
+Ejemplo conceptual
+
+Supongamos que un usuario sube:
+
+ventas.csv → tabla ventas
+nba_stats.xlsx → tabla nba_stats
+
+Podemos crear dos tablas semánticas en DuckDB:
+
+-- Tabla de metadatos de columnas
+CREATE TABLE semantic_columns (
+    table_name TEXT,
+    column_name TEXT,
+    column_type TEXT,
+    alias TEXT
+);
+
+-- Tabla de relaciones (opcional)
+CREATE TABLE semantic_joins (
+    table1 TEXT,
+    column1 TEXT,
+    table2 TEXT,
+    column2 TEXT
+);
+
+Luego, cada vez que un usuario sube un dataset:
+
+import duckdb
+
+# Conector semántico
+semantic_conn = duckdb.connect(database=':memory:')  # en memoria
+
+# Ejemplo para ventas
+ventas_cols = [
+    ("ventas", "fecha", "date", "Fecha de venta"),
+    ("ventas", "producto", "string", "Producto"),
+    ("ventas", "cantidad", "int", "Cantidad vendida"),
+    ("ventas", "precio", "float", "Precio unitario")
+]
+
+semantic_conn.executemany(
+    "INSERT INTO semantic_columns VALUES (?, ?, ?, ?)",
+    ventas_cols
+)
+Cada dataset nuevo ingresa aquí.
+El alias se puede editar desde UI.
+Se puede consultar con SQL para sugerencias al LLM.
+2️⃣ UI para editar la semántica
+
+Queremos que el usuario pueda:
+
+Ver la tabla que subió
+Cambiar alias de columnas
+Agregar columnas manualmente (ej: columnas calculadas)
+Hacer joins o relaciones con otras tablas
+Ejemplo Streamlit
+import streamlit as st
+import pandas as pd
+
+# Obtener columnas semánticas de DuckDB
+semantic_df = semantic_conn.execute("SELECT * FROM semantic_columns").df()
+st.subheader("🧩 Capa Semántica")
+
+# Mostrar tabla editable
+edited_df = st.data_editor(semantic_df, num_rows="dynamic")  # editable
+
+# Guardar cambios de alias
+for _, row in edited_df.iterrows():
+    semantic_conn.execute("""
+        UPDATE semantic_columns 
+        SET alias = ?
+        WHERE table_name = ? AND column_name = ?
+    """, (row["alias"], row["table_name"], row["column_name"]))
+st.data_editor permite que el usuario cambie alias, agregue filas, etc.
+Cada cambio se sincroniza con la capa semántica.
+Esto ya habilita una UI donde el usuario ve y controla todo.
+3️⃣ Joins automáticos o relaciones entre tablas
+
+Podés permitir que el usuario marque columnas para “relacionar” tablas, y guardarlo en la tabla semantic_joins:
+
+joins_df = st.data_editor(
+    semantic_conn.execute("SELECT * FROM semantic_joins").df(),
+    num_rows="dynamic"
+)
+
+# Guardar cambios en DuckDB
+for _, row in joins_df.iterrows():
+    semantic_conn.execute("""
+        INSERT INTO semantic_joins (table1, column1, table2, column2)
+        VALUES (?, ?, ?, ?)
+        ON CONFLICT DO NOTHING
+    """, (row["table1"], row["column1"], row["table2"], row["column2"]))
+Esto le permite al LLM sugerir joins automáticamente cuando la pregunta involucra varias tablas.
+Ejemplo: “Total de puntos por producto vendido” → si hay relación entre ventas.producto y nba_stats.player (hipotético), LLM puede generar join seguro.
+4️⃣ Integración con LLM / SQL Agent
+a) Paso 1: mapear términos semánticos
+
+Cuando llega la pregunta del usuario:
+
+def map_semantics(question, semantic_conn):
+    # Obtener todas columnas con alias
+    df = semantic_conn.execute("SELECT * FROM semantic_columns").df()
+    for _, row in df.iterrows():
+        question = question.replace(row["alias"], row["column_name"])
+    return question
+Esto asegura que el LLM trabaje con nombres reales de columnas, pero el usuario puede usar alias amigables.
+b) Paso 2: enviar contexto al LLM
+prompt = f"""
+You are a SQL expert.
+
+Semantic schema:
+{semantic_conn.execute("SELECT * FROM semantic_columns").df().to_dict()}
+
+User question:
+{mapped_question}
+
+Return ONLY valid SQL.
+"""
+LLM recibe solo lo que existe, evitando errores.
+Puedes incluso incluir relaciones de semantic_joins para que sugiera joins.
+5️⃣ Flujo final (resumen)
+Usuario sube dataset → se registra en semantic_columns con DuckDB en memoria
+Streamlit UI permite:
+Ver columnas y alias
+Editar alias
+Agregar columnas
+Hacer joins (semantic_joins)
+Usuario hace pregunta
+map_semantics() reemplaza alias por nombres reales
+SQL Agent + LLM generan query segura
+Ejecutar query → resultado
+Feedback → actualizar semántica
+
+✅ Beneficios:
+
+Flexible: funciona para ventas, NBA, cualquier dataset.
+Dinámica: usuario puede modificar alias, agregar relaciones, columnas calculadas.
+Seguro: guardrails + semantic layer evitan SQL inválido.
+Extensible: futuros datasets o joins se integran fácilmente.
+LLM más confiable: contexto preciso de columnas y relaciones.
+
+Si querés, el próximo paso que puedo hacer es armarte un mini prototipo completo en Streamlit, que:
+
+Detecte tablas/columnas de un CSV o Excel
+Cree la capa semántica en DuckDB
+Permita editar alias y relaciones en la UI
+Integre sql_agent para ejecutar preguntas traducidas por alias
+
+Eso te dejaría un MVP plug & play listo para cualquier dataset.
+
+
+
+
+//////////////////// fin no tienen sentido ///////////////////////
+
+
+
+////////////////////////////////////  horrible ////////////////////////
+
+Perfecto, Alejandro. Te armo un mini prototipo completo en Streamlit que cumpla con todos esos objetivos: detectar tablas y columnas, crear la capa semántica en DuckDB, permitir edición de alias y relaciones, e integrar sql_agent para generar SQL a partir de alias.
+
+# mini_semantic_app.py
+import streamlit as st
+import pandas as pd
+import duckdb
+from agents.sql_agent import generate_sql
+
+# -------------------------
+# Conector semántico DuckDB en memoria
+# -------------------------
+semantic_conn = duckdb.connect(database=":memory:")
+
+# Tablas semánticas
+semantic_conn.execute("""
+CREATE TABLE IF NOT EXISTS semantic_columns (
+    table_name TEXT,
+    column_name TEXT,
+    column_type TEXT,
+    alias TEXT
+)
+""")
+
+semantic_conn.execute("""
+CREATE TABLE IF NOT EXISTS semantic_joins (
+    table1 TEXT,
+    column1 TEXT,
+    table2 TEXT,
+    column2 TEXT
+)
+""")
+
+# -------------------------
+# Subir archivos
+# -------------------------
+st.title("🧠 Mini Capa Semántica")
+
+uploaded_file = st.file_uploader(
+    "📂 Subí tu CSV o Excel",
+    type=["csv", "xlsx"]
+)
+
+if uploaded_file:
+    if uploaded_file.name.endswith(".csv"):
+        df = pd.read_csv(uploaded_file)
+    else:
+        df = pd.read_excel(uploaded_file)
+
+    st.subheader("👀 Preview del dataset")
+    st.dataframe(df.head(10))
+
+    table_name = st.text_input("Nombre de la tabla", value="mi_tabla")
+
+    # -------------------------
+    # Registrar columnas en DuckDB
+    # -------------------------
+    for col, dtype in zip(df.columns, df.dtypes):
+        semantic_conn.execute("""
+        INSERT INTO semantic_columns (table_name, column_name, column_type, alias)
+        VALUES (?, ?, ?, ?)
+        """, (table_name, col, str(dtype), col))
+
+    # Registrar tabla real en DuckDB
+    semantic_conn.register(table_name, df)
+
+    st.success(f"✅ Tabla '{table_name}' registrada en la capa semántica")
+
+# -------------------------
+# Editor de la capa semántica
+# -------------------------
+st.subheader("🧩 Capa Semántica")
+
+semantic_df = semantic_conn.execute("SELECT * FROM semantic_columns").df()
+
+edited_df = st.data_editor(semantic_df, num_rows="dynamic")
+
+# Guardar cambios de alias
+if st.button("💾 Guardar cambios en alias"):
+    for _, row in edited_df.iterrows():
+        semantic_conn.execute("""
+        UPDATE semantic_columns 
+        SET alias = ?
+        WHERE table_name = ? AND column_name = ?
+        """, (row["alias"], row["table_name"], row["column_name"]))
+    st.success("✅ Alias actualizados en la capa semántica")
+
+# -------------------------
+# Relaciones entre tablas
+# -------------------------
+st.subheader("🔗 Relaciones entre tablas (Joins)")
+
+joins_df = semantic_conn.execute("SELECT * FROM semantic_joins").df()
+
+edited_joins = st.data_editor(joins_df, num_rows="dynamic")
+
+# Guardar joins
+if st.button("💾 Guardar relaciones"):
+    for _, row in edited_joins.iterrows():
+        semantic_conn.execute("""
+        INSERT INTO semantic_joins (table1, column1, table2, column2)
+        VALUES (?, ?, ?, ?)
+        ON CONFLICT DO NOTHING
+        """, (row["table1"], row["column1"], row["table2"], row["column2"]))
+    st.success("✅ Relaciones guardadas")
+
+# -------------------------
+# Preguntas con alias
+# -------------------------
+st.subheader("💬 Pregunta usando alias")
+
+question = st.text_input("Hacé tu pregunta")
+
+def map_semantics(question, semantic_conn):
+    df = semantic_conn.execute("SELECT * FROM semantic_columns").df()
+    # Reemplaza alias por nombres reales
+    for _, row in df.iterrows():
+        if row["alias"] in question:
+            question = question.replace(row["alias"], row["column_name"])
+    return question
+
+if st.button("🚀 Ejecutar pregunta"):
+    if not question:
+        st.warning("Ingresá una pregunta primero")
+        st.stop()
+
+    # Mapear alias
+    mapped_question = map_semantics(question, semantic_conn)
+
+    # Generar SQL usando sql_agent
+    sql = generate_sql(mapped_question, semantic_conn.execute("SELECT * FROM semantic_columns").df())
+    st.subheader("📜 SQL generado")
+    st.code(sql)
+
+    # Ejecutar SQL
+    try:
+        result = semantic_conn.execute(sql).df()
+        st.subheader("📊 Resultado")
+        st.dataframe(result)
+    except Exception as e:
+        st.error(f"❌ Error al ejecutar SQL: {str(e)}")
+🔹 Qué hace este prototipo
+Permite subir CSV o Excel.
+Detecta columnas y tipos, las registra en una tabla semántica (semantic_columns).
+Permite editar alias de columnas desde la UI.
+Permite definir joins entre tablas (semantic_joins) de forma editable.
+Traduce la pregunta del usuario reemplazando alias por nombres reales.
+Usa sql_agent.generate_sql para generar SQL válido según la semántica.
+Ejecuta el SQL en el DuckDB local y muestra resultados.
+
+💡 Extensiones pro que podés agregar:
+
+Soporte para múltiples tablas subidas en la misma sesión.
+Cálculo de columnas derivadas (ej: Total = cantidad * precio).
+Validación de joins sugeridos por LLM.
+Guardar sesión de semántica por usuario con st.session_state.
+
+//////////////////////// fin horrible /////////////////////////////
+
+
+
