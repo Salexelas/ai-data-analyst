@@ -26,6 +26,7 @@
     ]
   },
   "metrics": {
+    "plata_gastada": "precio * cantidad",
     "revenue_total": "revenue_total",
     "ticket_promedio": "AVG(plata gastada)",
     "cantidad_compras": "COUNT(numero de compra)",

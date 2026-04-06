@@ -1,0 +1,6 @@
+[
+  {
+    "question": "total plata gastada",
+    "sql": "SELECT SUM(precio * cantidad) AS plata_gastada FROM data"
+  }
+]

@@ -4,7 +4,7 @@ import os
 import hashlib
 
 from connectors.factory import create_connector
-from semantic.semantic_layer import build_semantic_layer
+from semantic.semantic_layer import build_semantic_layer, merge_semantic_layers
 from semantic.semantic_agent import generate_semantic_suggestions
 
 st.set_page_config(page_title="AI Data Analyst", layout="wide")
@@ -37,6 +37,19 @@ def load_semantic_layer(dataset_id):
             return json.load(f)
 
     return None
+
+
+def list_semantic_files():
+    path = "semantic_store"
+    if not os.path.exists(path):
+        return []
+    return [f for f in os.listdir(path) if f.endswith(".json")]
+
+
+def load_semantic_file(file_name):
+    path = os.path.join("semantic_store", file_name)
+    with open(path) as f:
+        return json.load(f)
 
 
 # -------------------------
@@ -105,11 +118,9 @@ if st.button("🚀 Conectar"):
         connector = create_connector(source_type, config)
         st.session_state["connector"] = connector
 
-        # 🔑 DATASET ID
         dataset_id = get_dataset_id(source_type, config)
         st.session_state["dataset_id"] = dataset_id
 
-        # 🔄 CARGAR SEMÁNTICA SI EXISTE
         loaded = load_semantic_layer(dataset_id)
         if loaded:
             st.session_state["semantic_layer"] = loaded
@@ -145,16 +156,44 @@ if "connector" in st.session_state:
     st.write(preview.dtypes)
 
     # -------------------------
-    # SEMANTIC LAYER
+    # 🔥 NUEVO: MULTI SEMANTIC
     # -------------------------
 
-    st.subheader("🧠 Capa Semántica")
+    st.subheader("🧠 Usar Semantic Layers existentes")
 
-    if st.button("✨ Generar semántica automáticamente"):
+    semantic_files = list_semantic_files()
+
+    if semantic_files:
+
+        col1, col2 = st.columns(2)
+
+        with col1:
+            sem1_name = st.selectbox("Semantic 1", ["None"] + semantic_files)
+
+        with col2:
+            sem2_name = st.selectbox("Semantic 2", ["None"] + semantic_files)
+
+        if st.button("📥 Aplicar Semantic Layers"):
+
+            sem1 = load_semantic_file(sem1_name) if sem1_name != "None" else None
+            sem2 = load_semantic_file(sem2_name) if sem2_name != "None" else None
+
+            merged = merge_semantic_layers(sem1, sem2)
+
+            st.session_state["semantic_layer"] = merged
+
+            st.success("✅ Semantic layers aplicadas")
+
+            st.json(merged)
+
+    # -------------------------
+    # GENERAR NUEVA
+    # -------------------------
+
+    st.subheader("✨ Generar nueva semántica")
+
+    if st.button("Generar automáticamente"):
         raw = generate_semantic_suggestions(columns)
-
-        st.subheader("🐛 Debug LLM")
-        st.json(raw)
 
         st.session_state["semantic_layer"] = build_semantic_layer(
             columns,
@@ -165,7 +204,7 @@ if "connector" in st.session_state:
         st.success("✅ Generada")
 
     # -------------------------
-    # EDITAR SEMÁNTICA
+    # EDITAR
     # -------------------------
 
     if "semantic_layer" in st.session_state:
@@ -178,7 +217,7 @@ if "connector" in st.session_state:
         st.write("### 📊 Métricas")
         st.json(sl["metrics"])
 
-        # EDITAR ALIASES
+        # EDITAR
         st.write("### ✏️ Editar Aliases")
 
         for col in columns:
@@ -192,21 +231,18 @@ if "connector" in st.session_state:
 
             sl["aliases"][col] = [v.strip() for v in value.split(",") if v]
 
-        # EDITAR MÉTRICAS
         st.write("### ✏️ Editar Métricas")
 
         for k, v in list(sl["metrics"].items()):
-    
             key_name = f"metric_{k}"
-            
+
             if key_name not in st.session_state:
                 st.session_state[key_name] = v
 
             new_val = st.text_input(k, key=key_name)
-
             sl["metrics"][k] = new_val
 
-        # AGREGAR MÉTRICA
+        # AGREGAR
         st.write("### ➕ Nueva Métrica")
 
         new_name = st.text_input("Nombre")
@@ -225,12 +261,7 @@ if "connector" in st.session_state:
             )
             st.success("✅ Guardado")
 
-        # DEBUG
-        with st.expander("🔍 JSON completo"):
-            st.json(sl)
-
         st.session_state["semantic_layer"] = sl
-
 
 # -------------------------
 # QUERY
@@ -251,7 +282,7 @@ if "connector" in st.session_state:
                 question,
                 st.session_state["connector"],
                 st.session_state.get("semantic_layer"),
-                st.session_state.get("dataset_id")  # 🔥 clave
+                st.session_state.get("dataset_id")
             )
 
             st.subheader("📊 Resultado")

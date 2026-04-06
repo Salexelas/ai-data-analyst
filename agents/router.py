@@ -21,6 +21,7 @@ def route_question(question, connector):
 '''
 import os
 import json
+import pandas as pd
 from agents.sql_agent import generate_sql
 
 
@@ -64,7 +65,7 @@ def route_question(question, connector, semantic_layer=None, dataset_id=None):
         return result
 
     except Exception as e:
-        return f"SQL Error: {str(e)}"
+        return pd.DataFrame({"error": [str(e)]})
 
 
 '''

@@ -79,6 +79,12 @@ Do not explain anything.
 Do not add comments.
 Do not add markdown.
 
+IMPORTANT:
+- The table name is ALWAYS: data
+- Use table name: data
+- If a metric is defined, use its SQL expression directly
+- Do not invent columns that do not exist
+
 Schema:
 {schema}
 
