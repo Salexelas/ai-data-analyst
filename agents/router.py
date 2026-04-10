@@ -1,29 +1,14 @@
-'''
-from agents.sql_agent import generate_sql
-
-def route_question(question, connector):
-
-    schema = connector.get_schema()
-    sql = generate_sql(question, schema)
-
-    try:
-        return connector.execute(sql)
-    except Exception as e:
-        return f"SQL Error: {str(e)}"
-
-'''
-
-
-
-
-
-'''       cambio sugerido   ***** guardrail   **** evita "DROP", "DELETE", "UPDATE", "INSERT", "ALTER"  ******
-'''
 import os
 import json
 import pandas as pd
-from agents.sql_agent import generate_sql
 
+#from agents.sql_agent import analyze_question
+
+
+
+# -------------------------
+# UTILIDADES
+# -------------------------
 
 def save_query(dataset_id, question, sql):
     os.makedirs("query_history", exist_ok=True)
@@ -45,29 +30,83 @@ def save_query(dataset_id, question, sql):
         json.dump(data, f, indent=2)
 
 
-def route_question(question, connector, semantic_layer=None, dataset_id=None):
+'''def normalize_df(df):
+    if not isinstance(df, pd.DataFrame):
+        return pd.DataFrame({"result": [str(df)]})
 
+    df = df.copy()
+
+    for col in df.columns:
+        if df[col].dtype == "object":
+            df[col] = df[col].astype(str)
+
+    return df
+'''
+
+# -------------------------
+# PIPELINE
+# -------------------------
+'''
+def run_pipeline(question, connector, semantic_layer=None, dataset_id=None):
+
+    # 1️⃣ SCHEMA
     schema = connector.get_schema()
 
-    sql = generate_sql(
-        question,
-        schema,
-        semantic_layer
-    )
+    # 2️⃣ ANALYSIS (TODO en una llamada)
+    analysis = analyze_question(question, schema, semantic_layer)
+
+    if not analysis["valid"]:
+        raise ValueError("No pude entender la consulta.")
+
+    if not analysis["related"]:
+        raise ValueError("La consulta no está relacionada con los datos.")
+
+    sql = analysis["sql"]
+
+    # 3️⃣ VALIDACIÓN SQL (local, sin LLM)
+    sql_upper = sql.upper()
+
+    if not sql_upper.startswith(("SELECT", "WITH")):
+        raise ValueError("SQL inválido")
+
+    forbidden = ["DROP", "DELETE", "UPDATE", "INSERT"]
+
+    if any(word in sql_upper for word in forbidden):
+        raise ValueError("SQL peligroso")
+
+    # 4️⃣ EJECUCIÓN
+    result = connector.execute(sql)
+    result = normalize_df(result)
+
+    # 5️⃣ SAVE
+    if dataset_id:
+        save_query(dataset_id, question, sql)
+
+    return {
+        "type": "table",
+        "data": result,
+        "sql": sql
+    }
+
+    
+    '''
+# -------------------------
+# ROUTER (ENTRYPOINT)
+# -------------------------
+
+from agents.orchestrator import run
+
+
+def route_question(question, connector, semantic_layer=None, dataset_id=None):
 
     try:
-        result = connector.execute(sql)
+        return run(question, connector, semantic_layer, dataset_id)
 
-        # 💾 guardar query
-        if dataset_id:
-            save_query(dataset_id, question, sql)
-
-        return result
+    except ValueError as e:
+        return {"type": "error", "message": str(e)}
 
     except Exception as e:
-        return pd.DataFrame({"error": [str(e)]})
-
-
+        return {"type": "error", "message": f"Error: {str(e)}"}
 '''
 👉 Problema:
 
@@ -92,3 +131,4 @@ elif is_metadata_question(question):
 elif is_impossible(question):
     ...
 '''
+

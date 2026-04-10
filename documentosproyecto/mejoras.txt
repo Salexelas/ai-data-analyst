@@ -1,3 +1,14 @@
+siempre contesta algo, es hora de planificar el roput para que diga que no tienen informacion
+corregir semantica urgenta
+corregir conexiones
+
+
+Continuar con lo proximo
+
+*******
+
+
+
 🔍 Lo que hizo  bien
 1. 🧱 Arquitectura desacoplada
 BaseConnector → excelente decisión

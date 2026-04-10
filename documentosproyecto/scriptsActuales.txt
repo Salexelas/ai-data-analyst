@@ -1,8 +1,15 @@
 router.py
 import os
 import json
-from agents.sql_agent import generate_sql
+import pandas as pd
 
+from agents.sql_agent import analyze_question
+
+
+
+# -------------------------
+# UTILIDADES
+# -------------------------
 
 def save_query(dataset_id, question, sql):
     os.makedirs("query_history", exist_ok=True)
@@ -24,61 +31,125 @@ def save_query(dataset_id, question, sql):
         json.dump(data, f, indent=2)
 
 
-def route_question(question, connector, semantic_layer=None, dataset_id=None):
+def normalize_df(df):
+    if not isinstance(df, pd.DataFrame):
+        return pd.DataFrame({"result": [str(df)]})
 
+    df = df.copy()
+
+    for col in df.columns:
+        if df[col].dtype == "object":
+            df[col] = df[col].astype(str)
+
+    return df
+
+
+# -------------------------
+# PIPELINE
+# -------------------------
+
+def run_pipeline(question, connector, semantic_layer=None, dataset_id=None):
+
+    # 1️⃣ SCHEMA
     schema = connector.get_schema()
 
-    sql = generate_sql(
-        question,
-        schema,
-        semantic_layer
-    )
+    # 2️⃣ ANALYSIS (TODO en una llamada)
+    analysis = analyze_question(question, schema, semantic_layer)
+
+    if not analysis["valid"]:
+        raise ValueError("No pude entender la consulta.")
+
+    if not analysis["related"]:
+        raise ValueError("La consulta no está relacionada con los datos.")
+
+    sql = analysis["sql"]
+
+    # 3️⃣ VALIDACIÓN SQL (local, sin LLM)
+    sql_upper = sql.upper()
+
+    if not sql_upper.startswith(("SELECT", "WITH")):
+        raise ValueError("SQL inválido")
+
+    forbidden = ["DROP", "DELETE", "UPDATE", "INSERT"]
+
+    if any(word in sql_upper for word in forbidden):
+        raise ValueError("SQL peligroso")
+
+    # 4️⃣ EJECUCIÓN
+    result = connector.execute(sql)
+    result = normalize_df(result)
+
+    # 5️⃣ SAVE
+    if dataset_id:
+        save_query(dataset_id, question, sql)
+
+    return {
+        "type": "table",
+        "data": result,
+        "sql": sql
+    }
+
+# -------------------------
+# ROUTER (ENTRYPOINT)
+# -------------------------
+
+def route_question(question, connector, semantic_layer=None, dataset_id=None):
 
     try:
-        result = connector.execute(sql)
+        return run_pipeline(question, connector, semantic_layer, dataset_id)
 
-        # 💾 guardar query
-        if dataset_id:
-            save_query(dataset_id, question, sql)
-
-        return result
+    except ValueError as e:
+        return {
+            "type": "error",
+            "message": str(e)
+        }
 
     except Exception as e:
-        return f"SQL Error: {str(e)}"
+        return {
+            "type": "error",
+            "message": f"SQL Error: {str(e)}"
+        }
 
 
 
-sql_agent.py
+sql_agents.py   #porque sql_Agent y sql validator separados
 from core.llm import call_llm
+import json
 import re
 
 
-def clean_sql(output: str) -> str:
-    match = re.search(r"(SELECT|WITH).*", output, re.IGNORECASE | re.DOTALL)
-    return match.group(0).strip() if match else output.strip()
+def extract_json(text: str):
+    match = re.search(r"\{.*\}", text, re.DOTALL)
+    return match.group(0) if match else "{}"
 
 
-def generate_sql(question, schema, semantic_layer=None):
+def analyze_question(question, schema, semantic_layer=None):
 
     semantic_text = ""
 
     if semantic_layer:
         semantic_text = f"""
 Semantic Layer:
-Aliases:
-{semantic_layer.get('aliases')}
-
-Metrics:
-{semantic_layer.get('metrics')}
+Aliases: {semantic_layer.get("aliases")}
+Metrics: {semantic_layer.get("metrics")}
 """
 
     prompt = f"""
-You are a senior SQL expert.
+You are a senior data analyst.
 
-ONLY return a valid SQL query.
-Do not explain anything.
-Do not add comments.
-Do not add markdown.
+Return ONLY JSON:
+
+{{
+  "valid": true/false,
+  "related": true/false,
+  "sql": "SQL query"
+}}
+
+Rules:
+- Only SELECT queries
+- Table name is: data
+- Do not hallucinate columns
+- ALWAYS wrap column names with spaces using double quotes
 
 Schema:
 {schema}
@@ -87,19 +158,15 @@ Schema:
 
 Question:
 {question}
-
-SQL:
 """
 
-    raw_output = call_llm(prompt)
-    sql = clean_sql(raw_output)
+    raw = call_llm(prompt)
+    cleaned = extract_json(raw)
 
-    return sql
-
-
-   
-
-
+    try:
+        return json.loads(cleaned)
+    except:
+        return {"valid": False, "related": False, "sql": ""}
 
 
 
@@ -127,7 +194,6 @@ class APIConnector(BaseConnector):
 
 
 
-
 base.py
 class BaseConnector:
 
@@ -139,8 +205,6 @@ class BaseConnector:
 
     def preview(self, limit=10):
         raise NotImplementedError
-
-
 
 
 csv.py
@@ -203,6 +267,7 @@ class DuckDBConnector(BaseConnector):
 
 
 
+
 excel.py
 import pandas as pd
 from connectors.base import BaseConnector
@@ -223,9 +288,6 @@ class ExcelConnector(BaseConnector):
 
     def preview(self, limit=10):
         return self.df.head(limit)
-
-
-
 
 
 
@@ -266,8 +328,8 @@ def create_connector(source_type, config):
         raise ValueError("Unsupported data source")
 
 
-googlesheets.py
 
+googleSheets.py
 import pandas as pd
 import sqlalchemy as sa
 from connectors.base import BaseConnector
@@ -291,15 +353,6 @@ class GoogleSheetsConnector(BaseConnector):
     def preview(self, limit=10):
         return self.df.head(limit)
     
-    def convert_to_csv_url(url: str) -> str:
-        if "docs.google.com/spreadsheets" not in url:
-            raise ValueError("No es un link válido de Google Sheets")
-
-        try:
-            sheet_id = url.split("/d/")[1].split("/")[0]
-            return f"https://docs.google.com/spreadsheets/d/{sheet_id}/gviz/tq?tqx=out:csv"
-        except:
-            raise ValueError("No se pudo parsear el link")
         
 def convert_to_csv_url(url: str) -> str:
     sheet_id = url.split("/d/")[1].split("/")[0]
@@ -309,53 +362,6 @@ def convert_to_csv_url(url: str) -> str:
         return f"https://docs.google.com/spreadsheets/d/{sheet_id}/export?format=csv&gid={gid}"
 
     return f"https://docs.google.com/spreadsheets/d/{sheet_id}/export?format=csv"
-
-
-
-import pandas as pd
-import sqlalchemy as sa
-from connectors.base import BaseConnector
-
-class MySQLConnector(BaseConnector):
-    def __init__(self, uri=None):
-        if uri:  # conexión real
-            self.engine = sa.create_engine(uri)
-            self.demo = False
-        else:  # demo
-            self.demo = True
-            self.df = pd.DataFrame({
-                "producto": ["Producto A", "Producto B", "Producto C"],
-                "cantidad": [10, 5, 8],
-                "precio": [100, 200, 150]
-            })
-
-    def execute(self, query):
-        if self.demo:
-            return self.df  # simple: devuelve todo
-        else:
-            with self.engine.connect() as conn:
-                result = conn.execute(sa.text(query))
-                return pd.DataFrame(result.fetchall(), columns=result.keys())
-
-    def get_schema(self):
-        if self.demo:
-            return pd.DataFrame({
-                "column_name": self.df.columns,
-                "data_type": [str(dt) for dt in self.df.dtypes]
-            })
-        else:
-            query = """
-            SELECT table_name, column_name, data_type
-            FROM information_schema.columns
-            """
-            return self.execute(query)
-    
-    def preview(self, limit=10):
-        if self.demo:
-            return self.df.head(limit)
-        else:
-            query = f"SELECT * FROM information_schema.tables LIMIT 1"
-            return self.execute(query)
 
 
 mysql.py
@@ -405,7 +411,8 @@ class MySQLConnector(BaseConnector):
             return self.execute(query)
 
 
-postgress.py
+
+postgres.py
 import pandas as pd
 import sqlalchemy as sa
 from connectors.base import BaseConnector
@@ -447,6 +454,7 @@ class PostgresConnector(BaseConnector):
         """
         df = self.execute(query)
         return df["table_name"].tolist()
+
 
 
 llm.py
@@ -491,7 +499,9 @@ def call_llm(prompt: str) -> str:
 
 
 
-semantic-.agent.py
+
+
+semantic agent.py        # porque no esta con los agentes?
 from core.llm import call_llm
 import json
 import re
@@ -530,9 +540,9 @@ Return ONLY valid JSON.
         return {"aliases": {}, "metrics": {}}
 
 
-semantic layer.py
-def build_semantic_layer(columns, aliases=None, metrics=None):
 
+semantic_layer.py
+def build_semantic_layer(columns, aliases=None, metrics=None):
     return {
         "columns": columns,
         "aliases": aliases or {},
@@ -540,4 +550,339 @@ def build_semantic_layer(columns, aliases=None, metrics=None):
     }
 
 
+def merge_semantic_layers(base_layer, extra_layer):
+    # Si uno es None → devolver el otro
+    if not base_layer:
+        return extra_layer
 
+    if not extra_layer:
+        return base_layer
+
+    merged = {
+        "columns": list(set(base_layer.get("columns", []) + extra_layer.get("columns", []))),
+        "aliases": {},
+        "metrics": {}
+    }
+
+    # -------------------------
+    # MERGE ALIASES
+    # -------------------------
+    merged["aliases"] = base_layer.get("aliases", {}).copy()
+
+    for col, values in extra_layer.get("aliases", {}).items():
+        if col in merged["aliases"]:
+            merged["aliases"][col] = list(set(merged["aliases"][col] + values))
+        else:
+            merged["aliases"][col] = values
+
+    # -------------------------
+    # MERGE METRICS
+    # -------------------------
+    merged["metrics"] = base_layer.get("metrics", {}).copy()
+
+    # 🔥 extra pisa base si hay conflicto
+    merged["metrics"].update(extra_layer.get("metrics", {}))
+
+    return merged
+
+
+utils.py
+import json
+import os
+import hashlib
+
+def get_dataset_id(source_type, config):
+    base = f"{source_type}_{str(config)}"
+    return hashlib.md5(base.encode()).hexdigest()
+
+def save_semantic_layer(dataset_id, semantic_layer):
+    os.makedirs("semantic_store", exist_ok=True)
+    path = f"semantic_store/{dataset_id}.json"
+
+    with open(path, "w") as f:
+        json.dump(semantic_layer, f, indent=2)
+
+def load_semantic_layer(dataset_id):
+    path = f"semantic_store/{dataset_id}.json"
+
+    if os.path.exists(path):
+        with open(path) as f:
+            return json.load(f)
+    return None
+
+def list_semantic_files():
+    path = "semantic_store"
+    if not os.path.exists(path):
+        return []
+    return [f for f in os.listdir(path) if f.endswith(".json")]
+
+def load_semantic_file(file_name):
+    path = os.path.join("semantic_store", file_name)
+    with open(path) as f:
+        return json.load(f)
+
+
+
+
+ui_query.py
+
+import streamlit as st
+from agents.router import route_question
+
+def render_query_ui():
+
+    st.subheader("💬 Pregunta")
+    question = st.text_input("Escribí tu pregunta")
+
+    if st.button("Ejecutar"):
+        response = route_question(
+            question,
+            st.session_state["connector"],
+            st.session_state.get("semantic_layer"),
+            st.session_state.get("dataset_id")
+        )
+
+        # 🔹 SQL (debug opcional)
+        if response.get("sql"):
+            st.subheader("🧠 SQL generado")
+            st.code(response["sql"], language="sql")
+
+        # 🔹 TABLE
+        if response["type"] == "table":
+            st.subheader("📊 Resultado")
+            st.dataframe(response["data"])
+
+        # 🔹 ERROR
+        elif response["type"] == "error":
+            st.error(response["message"])
+
+        # 🔹 TEXT (por si agregás después)
+        elif response["type"] == "text":
+            st.write(response["message"])
+
+
+
+ui_semantic.py
+import streamlit as st
+
+from semantic.semantic_layer import build_semantic_layer, merge_semantic_layers
+from semantic.semantic_agent import generate_semantic_suggestions
+from semantic.utils import (
+    save_semantic_layer,
+    list_semantic_files,
+    load_semantic_file
+)
+
+def render_semantic_ui(connector):
+
+    preview = connector.preview()
+    columns = list(preview.columns)
+
+    st.subheader("🧠 Columnas")
+    st.write(columns)
+
+    st.subheader("📊 Tipos")
+    st.write(preview.dtypes)
+
+    # -------------------------
+    # MULTI SEMANTIC
+    # -------------------------
+
+    st.subheader("🧠 Usar Semantic Layers existentes")
+
+    semantic_files = list_semantic_files()
+
+    if semantic_files:
+
+        col1, col2 = st.columns(2)
+
+        with col1:
+            sem1_name = st.selectbox("Semantic 1", ["None"] + semantic_files)
+
+        with col2:
+            sem2_name = st.selectbox("Semantic 2", ["None"] + semantic_files)
+
+        if st.button("📥 Aplicar Semantic Layers"):
+
+            sem1 = load_semantic_file(sem1_name) if sem1_name != "None" else None
+            sem2 = load_semantic_file(sem2_name) if sem2_name != "None" else None
+
+            merged = merge_semantic_layers(sem1, sem2)
+
+            st.session_state["semantic_layer"] = merged
+
+            st.success("✅ Semantic layers aplicadas")
+            st.json(merged)
+
+    # -------------------------
+    # GENERAR
+    # -------------------------
+
+    st.subheader("✨ Generar nueva semántica")
+
+    if st.button("Generar automáticamente"):
+        raw = generate_semantic_suggestions(columns)
+
+        st.session_state["semantic_layer"] = build_semantic_layer(
+            columns,
+            raw.get("aliases"),
+            raw.get("metrics")
+        )
+
+        st.success("✅ Generada")
+
+    # -------------------------
+    # EDITAR
+    # -------------------------
+
+    if "semantic_layer" in st.session_state:
+
+        sl = st.session_state["semantic_layer"]
+
+        st.write("### 🔤 Aliases")
+        st.json(sl["aliases"])
+
+        st.write("### 📊 Métricas")
+        st.json(sl["metrics"])
+
+        st.write("### ✏️ Editar Aliases")
+
+        for col in columns:
+            current = sl["aliases"].get(col, [])
+            key_name = f"alias_{col}"
+
+            if key_name not in st.session_state:
+                st.session_state[key_name] = ", ".join(current)
+
+            value = st.text_input(col, key=key_name)
+            sl["aliases"][col] = [v.strip() for v in value.split(",") if v]
+
+        st.write("### ✏️ Editar Métricas")
+
+        for k, v in list(sl["metrics"].items()):
+            key_name = f"metric_{k}"
+
+            if key_name not in st.session_state:
+                st.session_state[key_name] = v
+
+            new_val = st.text_input(k, key=key_name)
+            sl["metrics"][k] = new_val
+
+        # AGREGAR
+        st.write("### ➕ Nueva Métrica")
+
+        new_name = st.text_input("Nombre")
+        new_expr = st.text_input("SQL")
+
+        if st.button("Agregar métrica"):
+            if new_name and new_expr:
+                sl["metrics"][new_name] = new_expr
+                st.success(f"✅ {new_name} agregada")
+
+        # GUARDAR
+        if st.button("💾 Guardar capa semántica"):
+            save_semantic_layer(
+                st.session_state["dataset_id"],
+                sl
+            )
+            st.success("✅ Guardado")
+
+        st.session_state["semantic_layer"] = sl
+
+
+
+ui_source.py
+import streamlit as st
+from connectors.factory import create_connector
+from semantic.utils import get_dataset_id, load_semantic_layer
+
+def render_source_selector():
+    source_type = st.selectbox(
+        "Seleccioná tipo de fuente",
+        ["duckdb", "postgres", "mysql", "excel", "csv", "google_sheets", "api"]
+    )
+
+    config = {}
+
+    if source_type == "duckdb":
+        use_demo = st.checkbox("Usar tabla demo", value=True)
+
+        uploaded_file = None
+        if not use_demo:
+            uploaded_file = st.file_uploader("Subí CSV/Parquet", type=["csv", "parquet"])
+
+        if uploaded_file:
+            config["file"] = uploaded_file
+        elif use_demo:
+            config["file"] = None
+
+    elif source_type in ["postgres", "mysql"]:
+        use_demo = st.checkbox("Usar demo", value=True)
+
+        if use_demo:
+            config["uri"] = None
+        else:
+            default_uri = (
+                "postgresql://user:pass@localhost:5432/db"
+                if source_type == "postgres"
+                else "mysql+pymysql://user:pass@localhost:3306/db"
+            )
+            config["uri"] = st.text_input("Connection String", default_uri)
+
+    elif source_type == "google_sheets":
+        config["url"] = st.text_input("Google Sheet URL")
+
+    elif source_type == "api":
+        config["base_url"] = st.text_input("Base URL", "https://api.example.com")
+
+    elif source_type in ["excel", "csv"]:
+        uploaded_file = st.file_uploader("📂 Subí archivo", type=["csv", "xlsx"])
+
+        if uploaded_file:
+            config["file"] = uploaded_file
+
+    if st.button("🚀 Conectar"):
+        connector = create_connector(source_type, config)
+
+        st.session_state["connector"] = connector
+        dataset_id = get_dataset_id(source_type, config)
+        st.session_state["dataset_id"] = dataset_id
+
+        loaded = load_semantic_layer(dataset_id)
+        if loaded:
+            st.session_state["semantic_layer"] = loaded
+            st.info("📂 Capa semántica cargada")
+
+        st.success("✅ Conectado")
+
+
+
+
+main.py
+import streamlit as st
+from ui.ui_source import render_source_selector
+from ui.ui_semantic import render_semantic_ui
+from ui.ui_query import render_query_ui
+
+st.set_page_config(page_title="AI Data Analyst", layout="wide")
+
+st.title("🔥 AI Data Analyst")
+st.write("Conectá tu fuente de datos en segundos")
+
+render_source_selector()
+
+if "connector" in st.session_state:
+
+    connector = st.session_state["connector"]
+
+    st.subheader("📚 Schema")
+    st.dataframe(connector.get_schema())
+
+    st.subheader("👀 Preview")
+    preview = connector.preview()
+    st.dataframe(preview)
+
+    # 👇 SOLO ESTO
+    render_semantic_ui(connector)
+
+    render_query_ui()

@@ -1,0 +1,202 @@
+🧠 Diagnóstico general (alto nivel)
+
+✔️ Lo bueno:
+
+Tienen una abstracción clara (BaseConnector) → excelente decisión
+Usan factory pattern → correcto para escalar fuentes
+Integran DuckDB como motor unificador → muy buena elección
+Separaron conectores por tipo → buen desacople
+
+❌ Lo problemático:
+
+Inconsistencias entre conectores (no cumplen contrato uniforme)
+Bugs concretos (nombres, funciones, imports)
+Mezcla de responsabilidades (ej: API ≠ SQL)
+Cosas “de etapas futuras” rompiendo esta etapa
+Falta de robustez (tipos, errores, edge cases)
+🔥 Problemas IMPORTANTES (los que marcaría como líder)
+1. ❌ llm.py está completamente mal
+llm.py
+class PostgresConnector(BaseConnector):
+
+👉 Esto es grave:
+
+Duplicaron código de PostgresConnector
+El archivo debería tener call_llm, pero no existe
+Rompe todo el sistema de agentes
+
+💬 Diagnóstico:
+
+Esto es un copy-paste error fuerte → indica falta de control de arquitectura
+
+✅ Fix:
+
+Borrar ese contenido
+Implementar call_llm()
+2. ❌ Inconsistencia crítica: APIConnector NO usa SQL
+def execute(self, endpoint):
+
+Mientras todos los demás usan:
+
+def execute(self, query: str)
+
+👉 Esto rompe el contrato de BaseConnector
+
+💬 Problema conceptual:
+
+Tu sistema es Text-to-SQL
+API no usa SQL → rompe el pipeline
+
+✅ Soluciones posibles:
+
+❌ Sacarlo de esta etapa (recomendado)
+✔️ O transformar API → DataFrame y luego DuckDB
+
+Ejemplo correcto:
+
+self.conn.register("data", df)
+3. ❌ GoogleSheetsConnector tiene funciones duplicadas y mal definidas
+def convert_to_csv_url(url: str) -> str:  # definida dos veces
+
+y además:
+
+csv_url = convert_to_csv_url(url)
+
+👉 pero esa función está definida abajo y fuera de la clase
+
+💬 Resultado:
+
+Código confuso
+Posible bug dependiendo del scope
+4. ❌ Falta de contrato fuerte en BaseConnector
+class BaseConnector:
+    def execute(self, query: str):
+
+👉 Problema:
+
+No se valida tipo de retorno
+No se define que debe devolver pd.DataFrame
+
+💬 En un sistema de datos esto es CLAVE
+
+✅ Mejor:
+
+def execute(self, query: str) -> pd.DataFrame:
+    ...
+5. ❌ MySQLConnector en modo demo rompe la lógica SQL
+if self.demo:
+    return self.df
+
+👉 Ignora completamente el query
+
+💬 Esto genera:
+
+Resultados incorrectos
+Debug imposible
+
+✅ Fix:
+Usar DuckDB también en demo:
+
+self.conn.register("data", self.df)
+return self.conn.execute(query).df()
+6. ❌ PostgresConnector.preview() usa método inexistente
+tables = self.get_tables()
+
+✔️ Existe, pero:
+
+return df["table_name"].tolist()
+
+👉 Si falla → rompe todo preview
+
+💬 Falta manejo de errores
+
+7. ❌ Factory acepta configs inconsistentes
+
+Ejemplo:
+
+DuckDBConnector(config.get("file"))
+
+vs
+
+PostgresConnector(config["uri"])
+
+👉 Algunos usan .get(), otros no
+
+💬 Resultado:
+
+KeyErrors
+Comportamiento inconsistente
+8. ❌ get_schema() no es consistente entre conectores
+
+Ejemplos:
+
+DuckDB → DESCRIBE data
+MySQL → information_schema
+API → devuelve dict
+
+👉 No hay formato estándar
+
+💬 Esto rompe todo lo que consume schema
+
+9. ❌ Upload de archivos (Streamlit) mal manejado
+config["file"] = uploaded_file
+
+👉 uploaded_file es un buffer, no un path
+
+💬 DuckDB espera path o stream manejado correctamente
+
+10. ❌ Mezcla de responsabilidades en esta etapa
+
+Tenés en el repo:
+
+guards
+semantic
+llm
+agentes
+
+👉 Pero el entregable es data connection
+
+💬 Como líder diría:
+
+Esto genera ruido, deuda técnica y confusión en el equipo
+
+🟡 Problemas de diseño (nivel senior)
+11. Naming inconsistente
+postgress.py ❌ (mal escrito)
+sql_agents.py vs sql_agent.py
+12. Falta de logging estructurado
+
+Todo debería tener logs, no prints
+
+13. No hay manejo de errores uniforme
+
+Cada conector maneja errores distinto
+
+14. No hay tests
+
+Para esta capa deberían existir:
+
+test_csv_connector
+test_duckdb_connector
+test_factory
+🟢 Qué está BIEN (importante destacarlo como líder)
+✔️ Uso de DuckDB → decisión senior
+✔️ Patrón factory
+✔️ Abstracción de conectores
+✔️ Preview + schema → bien pensado para UI
+✔️ Persistencia de semantic (aunque no corresponde aún)
+🎯 Qué deberías decir como líder (resumen ejecutivo)
+
+Si tenés que dar feedback al equipo:
+
+“La base arquitectónica es correcta (factory + connectors + DuckDB), pero para esta etapa hay inconsistencias importantes en el contrato de los conectores, errores de implementación y mezcla de responsabilidades con componentes que no corresponden todavía. Antes de avanzar a RAG o LLM, necesitamos estabilizar la capa de conexión de datos con interfaces consistentes, ejecución SQL homogénea y eliminación de fuentes que no encajan en el modelo (como APIs sin adaptación).”
+
+🚀 Prioridades (orden real de trabajo)
+🔴 Arreglar llm.py (bloqueante)
+🔴 Unificar contrato execute()
+🔴 Arreglar APIConnector o eliminarlo
+🔴 Corregir GoogleSheets
+🟡 Normalizar get_schema()
+🟡 Fix MySQL demo
+🟡 Manejo correcto de uploads
+🟢 Limpiar código fuera de scope (semantic, guards)

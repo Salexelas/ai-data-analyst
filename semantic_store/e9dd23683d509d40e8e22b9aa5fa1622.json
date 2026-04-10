@@ -1,0 +1,33 @@
+{
+  "columns": [
+    "Cliente",
+    "numero de compra",
+    "plata gastada"
+  ],
+  "aliases": {
+    "Cliente": [
+      "cliente",
+      "customer",
+      "usuario",
+      "persona"
+    ],
+    "numero de compra": [
+      "cliente",
+      "customer",
+      "usuario",
+      "persona"
+    ],
+    "plata gastada": [
+      "gastada revenue",
+      "total ventas",
+      "ingresos",
+      "dinero",
+      "spend",
+      "plata gastada",
+      "gasto"
+    ]
+  },
+  "metrics": {
+    "total ventas": "sum(\"plata_gastada\")"
+  }
+}

@@ -14,21 +14,18 @@ headers = {
 }
 
 
-def call_llm(prompt: str) -> str:
+def call_llm(prompt: str, system_prompt: str = "You are a helpful AI") -> str:
 
     payload = {
         "model": "llama-3.3-70b-versatile",
         "messages": [
-            {"role": "system", "content": "You are a senior SQL expert. Only return SQL."},
+            {"role": "system", "content": system_prompt},
             {"role": "user", "content": prompt}
         ],
         "temperature": 0.2
     }
 
     response = requests.post(API_URL, headers=headers, json=payload)
-
-    print("STATUS:", response.status_code)
-    print("RAW:", response.text[:300])
 
     if response.status_code != 200:
         raise Exception(response.text)

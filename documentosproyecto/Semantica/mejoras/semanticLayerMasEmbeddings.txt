@@ -1,0 +1,253 @@
+***Semantic Layer + Embeddings de métricas y columnas.*****************************************************************************************
+
+
+
+
+🧠 El problema del Text-to-SQL clásico
+Supongamos esta tabla:
+
+sales
+---------
+id
+cust_id
+amt
+dt
+Usuario pregunta:
+
+"Total revenue last month"
+
+El modelo tiene que inferir:
+
+revenue = amt
+date = dt
+customer = cust_id
+Pero esto no está en el schema.
+
+El modelo está adivinando.
+
+Por eso muchos sistemas fallan incluso con GPT-4.
+
+🧱 Solución: Semantic Layer
+Se crea una capa semántica que describe el negocio.
+
+Ejemplo:
+
+{
+ "metric": "revenue",
+ "definition": "sum of sales amount",
+ "column": "sales.amt",
+ "aggregation": "SUM"
+}
+Otra:
+
+{
+ "dimension": "customer",
+ "column": "sales.cust_id",
+ "description": "unique customer identifier"
+}
+Otra:
+
+{
+ "dimension": "date",
+ "column": "sales.dt"
+}
+Ahora el modelo no tiene que adivinar.
+
+🧠 Cómo funciona el pipeline moderno
+User Question
+     │
+     ▼
+Embedding Search (metrics + columns)
+     │
+     ▼
+Retrieve relevant semantic objects
+     │
+     ▼
+Planner
+     │
+     ▼
+SQL Generation
+📦 Base de conocimiento semántica
+En lugar de solo indexar tablas, indexás:
+
+métricas
+dimensiones
+joins
+definiciones de negocio
+Ejemplo dataset semántico:
+
+[
+ {
+  "name": "revenue",
+  "type": "metric",
+  "definition": "total money generated from sales",
+  "sql": "SUM(sales.amount)"
+ },
+ {
+  "name": "orders",
+  "type": "metric",
+  "definition": "number of orders",
+  "sql": "COUNT(order_id)"
+ },
+ {
+  "name": "customer_country",
+  "type": "dimension",
+  "definition": "country of the customer",
+  "column": "customers.country"
+ }
+]
+🔎 Embedding retrieval
+Cuando llega la pregunta:
+
+Top countries by revenue
+Se vectoriza.
+
+El vector DB devuelve:
+
+revenue (metric)
+country (dimension)
+sales table
+customers table
+Esto le da contexto al LLM.
+
+📊 Contexto enviado al modelo
+Prompt real:
+
+User question:
+Top countries by revenue
+
+Available metrics:
+- revenue = SUM(sales.amount)
+
+Available dimensions:
+- country = customers.country
+
+Available joins:
+sales.customer_id = customers.id
+El modelo genera:
+
+SELECT
+customers.country,
+SUM(sales.amount) as revenue
+FROM sales
+JOIN customers
+ON sales.customer_id = customers.id
+GROUP BY customers.country
+ORDER BY revenue DESC
+Mucho más confiable.
+
+🧠 Qué indexar en embeddings
+Te recomiendo indexar 4 tipos de objetos.
+
+1️⃣ métricas
+revenue
+profit
+orders
+active users
+2️⃣ dimensiones
+country
+customer
+product
+category
+date
+3️⃣ joins
+sales.customer_id → customers.id
+orders.product_id → products.id
+4️⃣ descripciones
+Muy importante.
+
+Revenue = total money generated from completed orders
+Esto ayuda muchísimo al LLM.
+
+📈 Pipeline completo moderno
+User Query
+     │
+     ▼
+Query Validator
+     │
+     ▼
+Embedding Search (metrics + dimensions)
+     │
+     ▼
+Semantic Context Builder
+     │
+     ▼
+Planner
+     │
+     ▼
+SQL Generator
+     │
+     ▼
+SQL Critic
+     │
+     ▼
+Execute SQL
+🧠 Ejemplo real
+Pregunta:
+
+Average order value by country
+Embedding retrieval:
+
+average order value
+orders
+country
+Contexto enviado al modelo:
+
+Metric:
+AOV = SUM(order_amount) / COUNT(order_id)
+
+Dimensions:
+country = customers.country
+SQL generado:
+
+SELECT
+customers.country,
+SUM(orders.amount) / COUNT(orders.id) AS aov
+FROM orders
+JOIN customers
+ON orders.customer_id = customers.id
+GROUP BY customers.country
+🚀 Mejora adicional (muy potente)
+Agregar aliases de métricas.
+
+Ejemplo:
+
+revenue
+sales
+income
+gmv
+Todas apuntan a la misma métrica.
+
+Esto mejora muchísimo la recuperación semántica.
+
+🧠 Herramientas que usan esto
+Estas herramientas básicamente son semantic layers.
+
+Cube
+MetricFlow
+dbt
+Looker
+ThoughtSpot
+Todas separan:
+
+Business logic
+from
+Physical schema
+💡 Consejo muy importante para tu proyecto
+En lugar de vectorizar solo:
+
+tables
+columns
+vectoriza también:
+
+metrics
+dimensions
+business definitions
+Esto hace que tu sistema pase de:
+
+Text-to-SQL
+a
+
+Semantic Text-to-SQL
+que es mucho más robusto.
+

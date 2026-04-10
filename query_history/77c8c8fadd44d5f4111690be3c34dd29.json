@@ -2,5 +2,45 @@
   {
     "question": "total plata gastada",
     "sql": "SELECT SUM(precio * cantidad) AS plata_gastada FROM data"
+  },
+  {
+    "question": "total gastado",
+    "sql": "SELECT SUM(precio * cantidad) FROM data"
+  },
+  {
+    "question": "cantidad de clientes",
+    "sql": "SELECT COUNT(DISTINCT producto) FROM data"
+  },
+  {
+    "question": "cantidad de productos",
+    "sql": "SELECT COUNT(DISTINCT producto) FROM data"
+  },
+  {
+    "question": "fg",
+    "sql": "SELECT COUNT(DISTINCT producto) FROM data"
+  },
+  {
+    "question": "total ventas",
+    "sql": "SELECT SUM(precio * cantidad) AS revenue_total FROM data"
+  },
+  {
+    "question": "plata gastada",
+    "sql": "SELECT precio * cantidad AS \"plata gastada\" FROM data"
+  },
+  {
+    "question": "ventas totales",
+    "sql": "SELECT SUM(precio * cantidad) AS revenue_total FROM data"
+  },
+  {
+    "question": "",
+    "sql": "SELECT SUM(\"precio\" * \"cantidad\") AS \"plata_gastada\" FROM data"
+  },
+  {
+    "question": "",
+    "sql": "SELECT SUM(\"precio\" * \"cantidad\") AS \"plata_gastada\" FROM data"
+  },
+  {
+    "question": "",
+    "sql": "SELECT SUM(\"precio\" * \"cantidad\") AS \"plata_gastada\" FROM data"
   }
 ]

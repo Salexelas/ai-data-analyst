@@ -1,0 +1,57 @@
+{
+  "columns": [
+    "Cliente",
+    "numero de compra",
+    "plata gastada"
+  ],
+  "aliases": {
+    "Cliente": [
+      "C",
+      "u",
+      "s",
+      "t",
+      "o",
+      "m",
+      "e",
+      "r"
+    ],
+    "numero de compra": [
+      "P",
+      "u",
+      "r",
+      "c",
+      "h",
+      "a",
+      "s",
+      "e",
+      "",
+      "N",
+      "u",
+      "m",
+      "b",
+      "e",
+      "r"
+    ],
+    "plata gastada": [
+      "A",
+      "m",
+      "o",
+      "u",
+      "n",
+      "t",
+      "",
+      "S",
+      "p",
+      "e",
+      "n",
+      "t"
+    ]
+  },
+  "metrics": {
+    "Total Spend": "SUM(plata_gastada)",
+    "Average Spend per Customer": "AVG(plata_gastada) GROUP BY Cliente",
+    "Total Purchases": "COUNT(numero de compra)",
+    "Customer Count": "COUNT(DISTINCT Cliente)",
+    "Average Purchases per Customer": "COUNT(numero de compra) / COUNT(DISTINCT Cliente)"
+  }
+}

@@ -1,0 +1,14 @@
+[
+  {
+    "question": "plata_gastada",
+    "sql": "SELECT \"plata gastada\" FROM data"
+  },
+  {
+    "question": "total ventas",
+    "sql": "SELECT SUM(\"plata gastada\") AS \"total ventas\" FROM data"
+  },
+  {
+    "question": "total clientes",
+    "sql": "SELECT COUNT(\"Cliente\") FROM data"
+  }
+]
