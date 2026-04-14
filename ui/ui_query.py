@@ -1,38 +1,32 @@
 import streamlit as st
-from agents.router import route_question
+from agents.service import answer_question
+
 
 def render_query_ui():
 
     st.subheader("💬 Pregunta")
+
     question = st.text_input("Escribí tu pregunta")
 
     if st.button("Ejecutar"):
-        response = route_question(
+
+        response = answer_question(
             question,
             st.session_state["connector"],
-            st.session_state.get("semantic_layer"),
-            st.session_state.get("dataset_id")
+            st.session_state.get("semantic_layer")
         )
 
-        # 🔹 SQL (debug opcional)
-        if response.get("sql"):
-            st.subheader("🧠 SQL generado")
-            st.code(response["sql"], language="sql")
+        # 🔹 ERROR
+        if response.get("type") == "error":
+            st.error(response["message"])
+            return
 
-        # 🔹 TABLE
-        if response["type"] == "table":
+        # 🔹 DATA
+        if response.get("type") == "table":
             st.subheader("📊 Resultado")
             st.dataframe(response["data"])
 
-        # 🔹 EXPLANATION
-        if response.get("explanation"):
+        # 🔹 INSIGHT
+        if response.get("explanation") is not None:
             st.subheader("🧠 Insight")
             st.write(response["explanation"])
-
-        # 🔹 ERROR
-        elif response["type"] == "error":
-            st.error(response["message"])
-
-        # 🔹 TEXT (por si agregás después)
-        elif response["type"] == "text":
-            st.write(response["message"])

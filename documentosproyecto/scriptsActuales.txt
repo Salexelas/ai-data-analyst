@@ -1,108 +1,966 @@
-Orden,Juego,TipoInflable,Cliente,Recibida,Via,,Provincia,Localidad,DireccionMapa,Número serie asignado,Control,Estado,Entregado,Comentarios
-QUO8988,AT301,ColchonesGimnasia,Hernan Vinci (Maite Granitto),21/2/2025,Hernan Vinci,Argentina,Buenos Aires,Caseros,"Argentina,Buenos Aires,Caseros",30100008374,8374,Entregado,27/2/2025,
-QUO8988,AT301,ColchonesGimnasia,Hernan Vinci (Maite Granitto),21/2/2025,Hernan Vinci,Argentina,Buenos Aires,Caseros,"Argentina,Buenos Aires,Caseros",30100008373,8373,Entregado,27/2/2025,
-QUO8988,FP001,Accesorios,Hernan Vinci (Maite Granitto),21/2/2025,Hernan Vinci,Argentina,Buenos Aires,Caseros,"Argentina,Buenos Aires,Caseros",1,1,Entregado,27/2/2025,
-QUO8988,INMA,Blowers,Hernan Vinci (Maite Granitto),21/2/2025,Hernan Vinci,Argentina,Buenos Aires,Caseros,"Argentina,Buenos Aires,Caseros",1,1,Entregado,27/2/2025,
-QUO8989,AT301,ColchonesGimnasia,Hernan Vinci(Maria Cecilia Moraleda),21/2/2025,Hernan Vinci,Argentina,Buenos Aires,Caseros,"Argentina,Buenos Aires,Caseros",30100008412,8412,Entregado,27/2/2025,
-QUO8989,INMA,Blowers,Hernan Vinci(Maria Cecilia Moraleda),21/2/2025,Hernan Vinci,Argentina,Buenos Aires,Caseros,"Argentina,Buenos Aires,Caseros",1,1,Entregado,27/2/2025,
-QUO8990,AT103,ColchonesGimnasia,Adriana Mendieta,24/2/2025,Cliente,Argentina,Buenos Aires,Hurlinghan,"Argentina,Buenos Aires,Hurlinghan",30200008445,8445,Entregado,25/2/2025,
-QUO8990,INMA,Blowers,Adriana Mendieta,24/2/2025,Cliente,Argentina,Buenos Aires,Hurlinghan,"Argentina,Buenos Aires,Hurlinghan",1,1,Entregado,25/2/2025,
-QUO8991,AT101,ColchonesGimnasia,Irene Fanti,24/2/2025,Cliente,Argentina,Buenos Aires,Coronel Suarez,"Argentina,Buenos Aires,Coronel Suarez",10100008442,8442,Entregado,27/2/2025,
-QUO8991,RP418,ElementosDeGimnasia,Irene Fanti,24/2/2025,Cliente,Argentina,Buenos Aires,Coronel Suarez,"Argentina,Buenos Aires,Coronel Suarez",17120008467,8467,Entregado,27/2/2025,
-QUO8991,CL180,ElementosDeGimnasia,Irene Fanti,24/2/2025,Cliente,Argentina,Buenos Aires,Coronel Suarez,"Argentina,Buenos Aires,Coronel Suarez",10800008435,8435,Entregado,27/2/2025,
-QUO8992,CL180,ElementosDeGimnasia,Hernan Vinci (ignacio Mercado),24/2/2025,Hernan Vinci,Argentina,Buenos Aires,Caseros,"Argentina,Buenos Aires,Caseros",10800008439,8439,Entregado,27/2/2025,
-QUO8994,CL180,ElementosDeGimnasia,CAI gym,25/2/2025,Cliente,Argentina,Buenos Aires,Ituzaingó,"Argentina,Buenos Aires,Ituzaingó",10800008440,8440,Entregado,27/2/2025,
-QUO8994,AT101,ColchonesGimnasia,CAI gym,25/2/2025,Cliente,Argentina,Buenos Aires,Ituzaingó,"Argentina,Buenos Aires,Ituzaingó",10100008444,8444,Entregado,27/2/2025,
-QUO8994,INMA,Blowers,CAI gym,25/2/2025,Cliente,Argentina,Buenos Aires,Ituzaingó,"Argentina,Buenos Aires,Ituzaingó",1,1,Entregado,27/2/2025,
-QUO8996,CL180,ElementosDeGimnasia,Martin Oscar Soto,25/2/2025,MercadoLibre,Argentina,Entre Rios,Diamante,"Argentina,Entre Rios,Diamante",10800008436,8436,Entregado,27/2/2025,
-QUO8997,YM265,JuegosAcuaticos,Claudio Muollo,25/2/2025,MercadoLibre,Argentina,Buenos Aires,,"Argentina,Buenos Aires,",20650008059,8059,Entregado,26/2/2025,
-QUO8997,INMA,Blowers,Claudio Muollo,25/2/2025,MercadoLibre,Argentina,Buenos Aires,,"Argentina,Buenos Aires,",1,1,Entregado,26/2/2025,
-QUO8995,AT301,ColchonesGimnasia,Hernan Vinci (Lucas Chiarlo),26/2/2025,Hernan Vinci,Argentina,Buenos Aires,Caseros,"Argentina,Buenos Aires,Caseros",30100008413,8413,Entregado,7/3/2025,
-QUO8995,AT301,ColchonesGimnasia,Hernan Vinci (Lucas Chiarlo),26/2/2025,Hernan Vinci,Argentina,Buenos Aires,Caseros,"Argentina,Buenos Aires,Caseros",30100008414,8414,Entregado,7/3/2025,
-QUO8995,AT302,ColchonesGimnasia,Hernan Vinci (Lucas Chiarlo),26/2/2025,Hernan Vinci,Argentina,Buenos Aires,Caseros,"Argentina,Buenos Aires,Caseros",30200008394,8394,Entregado,7/3/2025,
-QUO8995,AT302,ColchonesGimnasia,Hernan Vinci (Lucas Chiarlo),26/2/2025,Hernan Vinci,Argentina,Buenos Aires,Caseros,"Argentina,Buenos Aires,Caseros",30200008496,8496,Entregado,7/3/2025,
-QUO8995,FP001,Accesorios,Hernan Vinci (Lucas Chiarlo),26/2/2025,Hernan Vinci,Argentina,Buenos Aires,Caseros,"Argentina,Buenos Aires,Caseros",1,1,Entregado,7/3/2025,
-QUO8995,FP001,Accesorios,Hernan Vinci (Lucas Chiarlo),26/2/2025,Hernan Vinci,Argentina,Buenos Aires,Caseros,"Argentina,Buenos Aires,Caseros",1,1,Entregado,7/3/2025,
-QUO8995,FP001,Accesorios,Hernan Vinci (Lucas Chiarlo),26/2/2025,Hernan Vinci,Argentina,Buenos Aires,Caseros,"Argentina,Buenos Aires,Caseros",1,1,Entregado,7/3/2025,
-QUO8995,INMA,Blowers,Hernan Vinci (Lucas Chiarlo),26/2/2025,Hernan Vinci,Argentina,Buenos Aires,Caseros,"Argentina,Buenos Aires,Caseros",1,1,Entregado,7/3/2025,
-QUO8998,OR,OrdenReparacion,Luciano Capelli,26/2/2025,Cliente,Argentina,Buenos Aires,Coronel Brandsen,"Argentina,Buenos Aires,Coronel Brandsen",1,1,A reparar,,
-QUO8999,AT101,ColchonesGimnasia,Jonathan Gamaliel,26/2/2025,MercadoLibre,Argentina,Buenos Aires,Caseros,"Argentina,Buenos Aires,Caseros",10100008443,8443,Entregado,27/2/2025,
-QUO9000,AT302,ColchonesGimnasia,Hernan Vinci (Luis Lizoro),26/2/2025,Hernan Vinci,Argentina,Buenos Aires,Caseros,"Argentina,Buenos Aires,Caseros",30200008497,8497,Entregado,5/3/2025,
-QUO9000,AT302,ColchonesGimnasia,Hernan Vinci (Luis Lizoro),26/2/2025,Hernan Vinci,Argentina,Buenos Aires,Caseros,"Argentina,Buenos Aires,Caseros",30200008498,8498,Entregado,5/3/2025,
-QUO9000,FP001,Accesorios,Hernan Vinci (Luis Lizoro),26/2/2025,Hernan Vinci,Argentina,Buenos Aires,Caseros,"Argentina,Buenos Aires,Caseros",1,1,Entregado,5/3/2025,
-QUO9000,INMA,Blowers,Hernan Vinci (Luis Lizoro),26/2/2025,Hernan Vinci,Argentina,Buenos Aires,Caseros,"Argentina,Buenos Aires,Caseros",1,1,Entregado,5/3/2025,
-QUO9002,OR,OrdenReparacion,Hernan Vinci (Eliana Druetta),27/2/2025,Hernan Vinci,Argentina,Buenos Aires,Caseros,"Argentina,Buenos Aires,Caseros",1,1,Reparado,,
-QUO9003,RP418,ElementosDeGimnasia,Hernan Vinci,27/2/2025,Hernan Vinci,Argentina,Buenos Aires,Caseros,"Argentina,Buenos Aires,Caseros",17120008468,8468,Entregado,27/2/2025,
-QUO9001,AT103,ColchonesGimnasia,Martina Sol Mamani,28/2/2025,Cliente,Argentina,Buenos Aires,La Ferrere,"Argentina,Buenos Aires,La Ferrere",30200008448,8448,Entregado,10/3/2025,
-QUO9004,AT109,ColchonesGimnasia,Club Imperio Juniors,28/2/2025,Cliente,Argentina,Buenos Aires,Capital Federal,"Argentina,Buenos Aires,Capital Federal",90200008500,8500,Entregado,5/3/2025,
-QUO9004,SCH-S,Blowers,Club Imperio Juniors,28/2/2025,Cliente,Argentina,Buenos Aires,Capital Federal,"Argentina,Buenos Aires,Capital Federal",1,1,Entregado,5/3/2025,
-QUO9005,AT103,ColchonesGimnasia,Sebastian Astori,28/2/2025,MercadoLibre,Argentina,Santa Fe,Rosario,"Argentina,Santa Fe,Rosario",30200008452,8452,Entregado,5/3/2025,
-QUO9008,CL180,ElementosDeGimnasia,Hernan Vinci (Fernando Martinez),5/3/2025,Hernan Vinci,Argentina,Buenos Aires,Cañuelas,"Argentina,Buenos Aires,Cañuelas",10800008502,8502,Entregado,10/3/2025,
-QUO9009,RP618,ElementosDeGimnasia,Assistance implant,7/3/2025,Cliente,Argentina,Santa Fe,Maciel,"Argentina,Santa Fe,Maciel",13190008490,8490,Entregado,13/3/2025,
-QUO9010,CL180,ElementosDeGimnasia,Hernan Vinci (Antonela Chavez),7/3/2025,Hernan Vinci,Argentina,CABA,Saavedra,"Argentina,CABA,Saavedra",10800008503,8503,Entregado,11/3/2025,
-QUO9011,FP001,Accesorios,Assistance implant,10/3/2025,Cliente,Argentina,Santa Fe,Maciel,"Argentina,Santa Fe,Maciel",1,1,Entregado,19/3/2025,
-QUO9012,AT310,ColchonesGimnasia,Johanna Mercado,10/3/2025,Cliente,Argentina,CABA,CABA,"Argentina,CABA,CABA",30100008400,8400,Entregado,14/3/2025,
-QUO9013,RP418,ElementosDeGimnasia,Hernan Vinci (Romina Diaz),10/3/2025,Hernan Vinci,Argentina,Chaco,Resistencia,"Argentina,Chaco,Resistencia",17120008521,8521,Entregado,21/3/2025,
-QUO9013,RP618,ElementosDeGimnasia,Hernan Vinci (Romina Diaz),10/3/2025,Hernan Vinci,Argentina,Chaco,Resistencia,"Argentina,Chaco,Resistencia",13190008533,8533,Entregado,21/3/2025,
-QUO9013,CL180,ElementosDeGimnasia,Hernan Vinci (Romina Diaz),10/3/2025,Hernan Vinci,Argentina,Chaco,Resistencia,"Argentina,Chaco,Resistencia",10800008505,8505,Entregado,21/3/2025,
-QUO9014,CL180,ElementosDeGimnasia,Hernan Vinci (Gabriel),11/3/2025,Hernan Vinci,Argentina,Misiones,Puerto Rico,"Argentina,Misiones,Puerto Rico",10800008504,8504,Entregado,13/3/2025,
-QUO9015,INMA,Blowers,Johanna Mercado,11/3/2025,Cliente,Argentina,CABA,CABA,"Argentina,CABA,CABA",1,1,Entregado,14/3/2025,
-QUO9016,OR,OrdenReparacion,Hernan Vinci,12/3/2025,Hernan Vinci,Argentina,Buenos Aires,Caseros,"Argentina,Buenos Aires,Caseros",1,1,A reparar,,
-QUO9017,AT301,ColchonesGimnasia,Hernan Vinci (Instituto de Educacion Fisica Lomas de Zamora),12/3/2025,Hernan Vinci,Argentina,Buenos Aires,Lomas de Zamora,"Argentina,Buenos Aires,Lomas de Zamora",30100008415,8415,Entregado,13/3/2025,
-QUO9017,INMA,Blowers,Hernan Vinci (Instituto de Educacion Fisica Lomas de Zamora),12/3/2025,Hernan Vinci,Argentina,Buenos Aires,Lomas de Zamora,"Argentina,Buenos Aires,Lomas de Zamora",1,1,Entregado,13/3/2025,
-QUO9018,Lona,Lona,Fernando Grandolfi,13/3/2025,Cliente,Argentina,Buenos Aires,Pilar,"Argentina,Buenos Aires,Pilar",1,1,Entregado,13/3/2025,
-QUO9019,884,InflablesCosturas,Hector Horacio Busca,13/3/2025,Cliente,Argentina,Mendoza,Mendoza,"Argentina,Mendoza,Mendoza",55100008543,8543,Entregado,21/3/2025,
-QUO9019,0666CM,Blowers,Hector Horacio Busca,13/3/2025,Cliente,Argentina,Mendoza,Mendoza,"Argentina,Mendoza,Mendoza",1,1,Entregado,21/3/2025,
-QUO9020,444ST01,InflablesCosturas,"Alejandro Gambassi, Recreativos",17/3/2025,Cliente,Argentina,Buenos Aires,Zarate,"Argentina,Buenos Aires,Zarate",10100008082,8082,Entregado,17/3/2025,
-QUO9020,444ST04,InflablesCosturas,"Alejandro Gambassi, Recreativos",17/3/2025,Cliente,Argentina,Buenos Aires,Zarate,"Argentina,Buenos Aires,Zarate",10100008279,8279,Entregado,17/3/2025,
-QUO9025,AI209,ColchonesGimnasia,Lucas Barrios,17/3/2025,Cliente,Argentina,Buenos Aires,Longchamps,"Argentina,Buenos Aires,Longchamps",90200008544,8544,Entregado,26/3/2025,
-QUO9025,0666CM,Blowers,Lucas Barrios,17/3/2025,Cliente,Argentina,Buenos Aires,Longchamps,"Argentina,Buenos Aires,Longchamps",1,1,Entregado,26/3/2025,
-QUO9027,CL180,ElementosDeGimnasia,Hernan Vinci (Carlos Villafañe),18/3/2025,Hernan Vinci,Argentina,Santa Fe,Santa Fe,"Argentina,Santa Fe,Santa Fe",10800008507,8507,Entregado,26/3/2025,
-QUO9028,AT301,ColchonesGimnasia,Hernan Vinci (Luciana Ricagni),18/3/2025,Hernan Vinci,Argentina,Cordoba,Cordoba,"Argentina,Cordoba,Cordoba",30100008416,8416,Entregado,21/3/2025,
-QUO9028,INMA,Blowers,Hernan Vinci (Luciana Ricagni),18/3/2025,Hernan Vinci,Argentina,Cordoba,Cordoba,"Argentina,Cordoba,Cordoba",1,1,Entregado,21/3/2025,
-QUO9030,Kit,Kit Reparacion,Veronica Potocnjak,19/3/2025,Cliente,Argentina,Buenos Aires,Cruce Castelar,"Argentina,Buenos Aires,Cruce Castelar",1,1,En Stock/Para Entregar,,
-QUO9031,AG405,JuegosAcuaticos,Diego Javier Oyhanarte,19/3/2025,Cliente,Argentina,Buenos Aires,Hurlinghan,"Argentina,Buenos Aires,Hurlinghan",30120008411,8411,En Stock/Para Entregar,,
-QUO9032,FP204,ElementosDeGimnasia,Hernan Vinci (Gabriela Gonzalez),20/3/2025,Hernan Vinci,Argentina,Buenos Aires,Caseros,"Argentina,Buenos Aires,Caseros",40200008511,8511,En Stock/Para Entregar,,
-QUO9032,SCH-S,Blowers,Hernan Vinci (Gabriela Gonzalez),20/3/2025,Hernan Vinci,Argentina,Buenos Aires,Caseros,"Argentina,Buenos Aires,Caseros",1,1,En Stock/Para Entregar,,
-QUO9033,FP204,ElementosDeGimnasia,Hernan Vinci (Pedro Joaquin MIlla),21/3/2025,Hernan Vinci,Argentina,Neuquen,Neuquen,"Argentina,Neuquen,Neuquen",,,En Stock/Para Entregar,,
-QUO9033,AT302,ColchonesGimnasia,Hernan Vinci (Pedro Joaquin MIlla),21/3/2025,Hernan Vinci,Argentina,Neuquen,Neuquen,"Argentina,Neuquen,Neuquen",30200008545,8545,En Stock/Para Entregar,,
-QUO9033,CL160,ElementosDeGimnasia,Hernan Vinci (Pedro Joaquin MIlla),21/3/2025,Hernan Vinci,Argentina,Neuquen,Neuquen,"Argentina,Neuquen,Neuquen",,,En Stock/Para Entregar,,
-QUO9033,SCH-S,Blowers,Hernan Vinci (Pedro Joaquin MIlla),21/3/2025,Hernan Vinci,Argentina,Neuquen,Neuquen,"Argentina,Neuquen,Neuquen",1,1,En Stock/Para Entregar,,
-QUO9034,CL180,ElementosDeGimnasia,Hernan Vinci (Prof. Geogina),21/3/2025,Hernan Vinci,Argentina,Buenos Aires,Buenos Aires,"Argentina,Buenos Aires,Buenos Aires",10800008506,8506,Entregado,26/3/2025,
-QUO9034,RP418,ElementosDeGimnasia,Hernan Vinci (Prof. Geogina),21/3/2025,Hernan Vinci,Argentina,Buenos Aires,Buenos Aires,"Argentina,Buenos Aires,Buenos Aires",17120008522,8522,Entregado,26/3/2025,
-QUO9035,RP618,ElementosDeGimnasia,Hernan Vinci (Lorena Bruno),21/3/2025,Hernan Vinci,Argentina,Santa Fe,Santa Fe,"Argentina,Santa Fe,Santa Fe",,,A producir,,
-QUO9036,CL180,ElementosDeGimnasia,Hernan Vinci (Anaclara Grabowski),25/3/2025,Hernan Vinci,Argentina,Santa Fe,Rosario,"Argentina,Santa Fe,Rosario",10800008508,8508,Entregado,26/3/2025,
-QUO9037,SB150,Soccer,Ernesto Sanchez Rospark,25/3/2025,Cliente,Argentina,Santa Fe,Rosario,"Argentina,Santa Fe,Rosario",15300008107,8107,En Stock/Para Entregar,,
-QUO9037,SB150,Soccer,Ernesto Sanchez Rospark,25/3/2025,Cliente,Argentina,Santa Fe,Rosario,"Argentina,Santa Fe,Rosario",15300008108,8108,En Stock/Para Entregar,,
-QUO9037,SB150,Soccer,Ernesto Sanchez Rospark,25/3/2025,Cliente,Argentina,Santa Fe,Rosario,"Argentina,Santa Fe,Rosario",15300008109,8109,En Stock/Para Entregar,,
-QUO9037,SB150,Soccer,Ernesto Sanchez Rospark,25/3/2025,Cliente,Argentina,Santa Fe,Rosario,"Argentina,Santa Fe,Rosario",15300008110,8110,En Stock/Para Entregar,,
-QUO9037,SB150,Soccer,Ernesto Sanchez Rospark,25/3/2025,Cliente,Argentina,Santa Fe,Rosario,"Argentina,Santa Fe,Rosario",15300008111,8111,En Stock/Para Entregar,,
-QUO9037,SB150,Soccer,Ernesto Sanchez Rospark,25/3/2025,Cliente,Argentina,Santa Fe,Rosario,"Argentina,Santa Fe,Rosario",15300008112,8112,En Stock/Para Entregar,,
-QUO9038,HP2022,Especiales,Molino Chacabuco,26/3/2025,Cliente,Argentina,Buenos Aires,Chacabuco,"Argentina,Buenos Aires,Chacabuco",,,En Produccion,,
-QUO9038,HP2022,Especiales,Molino Chacabuco,26/3/2025,Cliente,Argentina,Buenos Aires,Chacabuco,"Argentina,Buenos Aires,Chacabuco",,,En Produccion,,
-QUO9038,HP2022,Especiales,Molino Chacabuco,26/3/2025,Cliente,Argentina,Buenos Aires,Chacabuco,"Argentina,Buenos Aires,Chacabuco",,,En Produccion,,
-QUO9038,HP2022,Especiales,Molino Chacabuco,26/3/2025,Cliente,Argentina,Buenos Aires,Chacabuco,"Argentina,Buenos Aires,Chacabuco",,,En Produccion,,
-QUO9039,AT101,ColchonesGimnasia,Lucas Barrios,26/3/2025,Cliente,Argentina,Buenos Aires,Longchamps,"Argentina,Buenos Aires,Longchamps",10100008513,8513,Entregado,26/3/2025,
-QUO9039,INMA,Blowers,Lucas Barrios,26/3/2025,Cliente,Argentina,Buenos Aires,Longchamps,"Argentina,Buenos Aires,Longchamps",1,1,Entregado,26/3/2025,
-QUO9041,AG103,JuegosAcuaticos,Eduardo Atkinson,27/3/2025,Cliente,Argentina,Buenos Aires,La Plata,"Argentina,Buenos Aires,La Plata",,,En Stock/Para Entregar,,
-QUO9041,AG104,JuegosAcuaticos,Eduardo Atkinson,27/3/2025,Cliente,Argentina,Buenos Aires,La Plata,"Argentina,Buenos Aires,La Plata",,,En Stock/Para Entregar,,
-QUO9041,AG113,JuegosAcuaticos,Eduardo Atkinson,27/3/2025,Cliente,Argentina,Buenos Aires,La Plata,"Argentina,Buenos Aires,La Plata",,,En Stock/Para Entregar,,
-QUO9042,RP618,ElementosDeGimnasia,Hernan Vinci (Jenifer Salguero),27/3/2025,Hernan Vinci,Argentina,Cordoba,Rio Segundo,"Argentina,Cordoba,Rio Segundo",,,En Produccion,,
-QUO9043,INMA,Blowers,Irene Fanti,27/3/2025,Cliente,Argentina,Buenos Aires,Coronel Suarez,"Argentina,Buenos Aires,Coronel Suarez",1,1,En Stock/Para Entregar,,
-QUO9044,AG101,JuegosAcuaticos,"Roberto Goycochea, Lago la Candelaria",27/3/2025,Cliente,Argentina,Buenos Aires,Tristan Suarez,"Argentina,Buenos Aires,Tristan Suarez",,,En Stock/Para Entregar,,
-QUO9044,AG101,JuegosAcuaticos,"Roberto Goycochea, Lago la Candelaria",27/3/2025,Cliente,Argentina,Buenos Aires,Tristan Suarez,"Argentina,Buenos Aires,Tristan Suarez",,,En Stock/Para Entregar,,
-QUO9044,AG103,JuegosAcuaticos,"Roberto Goycochea, Lago la Candelaria",27/3/2025,Cliente,Argentina,Buenos Aires,Tristan Suarez,"Argentina,Buenos Aires,Tristan Suarez",,,En Stock/Para Entregar,,
-QUO9044,AG104,JuegosAcuaticos,"Roberto Goycochea, Lago la Candelaria",27/3/2025,Cliente,Argentina,Buenos Aires,Tristan Suarez,"Argentina,Buenos Aires,Tristan Suarez",,,En Stock/Para Entregar,,
-QUO9044,AG104,JuegosAcuaticos,"Roberto Goycochea, Lago la Candelaria",27/3/2025,Cliente,Argentina,Buenos Aires,Tristan Suarez,"Argentina,Buenos Aires,Tristan Suarez",,,En Stock/Para Entregar,,
-QUO9044,AG104,JuegosAcuaticos,"Roberto Goycochea, Lago la Candelaria",27/3/2025,Cliente,Argentina,Buenos Aires,Tristan Suarez,"Argentina,Buenos Aires,Tristan Suarez",,,En Stock/Para Entregar,,
-QUO9044,AG104,JuegosAcuaticos,"Roberto Goycochea, Lago la Candelaria",27/3/2025,Cliente,Argentina,Buenos Aires,Tristan Suarez,"Argentina,Buenos Aires,Tristan Suarez",,,En Stock/Para Entregar,,
-QUO9044,AG104,JuegosAcuaticos,"Roberto Goycochea, Lago la Candelaria",27/3/2025,Cliente,Argentina,Buenos Aires,Tristan Suarez,"Argentina,Buenos Aires,Tristan Suarez",,,En Stock/Para Entregar,,
-QUO9044,AG105,JuegosAcuaticos,"Roberto Goycochea, Lago la Candelaria",27/3/2025,Cliente,Argentina,Buenos Aires,Tristan Suarez,"Argentina,Buenos Aires,Tristan Suarez",,,En Stock/Para Entregar,,
-QUO9044,AG105,JuegosAcuaticos,"Roberto Goycochea, Lago la Candelaria",27/3/2025,Cliente,Argentina,Buenos Aires,Tristan Suarez,"Argentina,Buenos Aires,Tristan Suarez",,,En Stock/Para Entregar,,
-QUO9044,AG105,JuegosAcuaticos,"Roberto Goycochea, Lago la Candelaria",27/3/2025,Cliente,Argentina,Buenos Aires,Tristan Suarez,"Argentina,Buenos Aires,Tristan Suarez",,,En Produccion,,
-QUO9044,AG106,JuegosAcuaticos,"Roberto Goycochea, Lago la Candelaria",27/3/2025,Cliente,Argentina,Buenos Aires,Tristan Suarez,"Argentina,Buenos Aires,Tristan Suarez",,,En Produccion,,
-QUO9044,AG112,JuegosAcuaticos,"Roberto Goycochea, Lago la Candelaria",27/3/2025,Cliente,Argentina,Buenos Aires,Tristan Suarez,"Argentina,Buenos Aires,Tristan Suarez",,,En Stock/Para Entregar,,
-QUO9044,AG118,JuegosAcuaticos,"Roberto Goycochea, Lago la Candelaria",27/3/2025,Cliente,Argentina,Buenos Aires,Tristan Suarez,"Argentina,Buenos Aires,Tristan Suarez",,,En Produccion,,
-QUO9044,AG121,JuegosAcuaticos,"Roberto Goycochea, Lago la Candelaria",27/3/2025,Cliente,Argentina,Buenos Aires,Tristan Suarez,"Argentina,Buenos Aires,Tristan Suarez",,,En Stock/Para Entregar,,
-QUO9044,AG401,JuegosAcuaticos,"Roberto Goycochea, Lago la Candelaria",27/3/2025,Cliente,Argentina,Buenos Aires,Tristan Suarez,"Argentina,Buenos Aires,Tristan Suarez",,,En Stock/Para Entregar,,
-QUO9045,OR,OrdenReparacion,Hernan Vinci,27/3/2025,Hernan Vinci,Argentina,Buenos Aires,Caseros,"Argentina,Buenos Aires,Caseros",1,1,A reparar,,
+************************************
+
+Usuario
+ ↓
+LLM → Intent (tipado)
+ ↓
+Validator
+ ↓
+Semantic Layer
+ ↓
+Query Builder
+ ↓
+SQL Validator
+ ↓
+DB
+ ↓
+Post-processing (clima, cálculos, etc)
+ ↓
+LLM (insight)
+ ↓
+Response + Logs
+
+
+*******************************************************************************
+
+from core.llm import call_llm
+
+
+def generate_raw_plan(question, schema, semantic_layer=None):
+
+    semantic_text = ""
+
+    if semantic_layer:
+        semantic_text = f"""
+Semantic Layer:
+Aliases: {semantic_layer.get("aliases")}
+Metrics: {semantic_layer.get("metrics")}
+"""
+
+    prompt = f"""
+You are a planning agent.
+
+Return ONLY JSON inside <json></json>.
+
+<json>
+{{
+  "valid": true/false,
+  "related": true/false,
+  "steps": [
+    {{ "tool": "sql", "input": "SQL query" }},
+    {{ "tool": "insight", "input": "user question" }}
+  ]
+}}
+</json>
+
+Rules:
+- Only SELECT queries
+- Table name is data
+- Columns with spaces MUST be quoted
+
+Schema:
+{schema}
+
+{semantic_text}
+
+Question:
+{question}
+"""
+
+    return call_llm(prompt, system_prompt="You are a strict data planner")
+
+
+
+
+import json
+import re
+
+def extract_json(text: str):
+
+    match = re.search(r"<json>(.*?)</json>", text, re.DOTALL)
+
+    if not match:
+        raise ValueError("No JSON found")
+
+    return match.group(1)
+
+
+def parse_plan(raw: str):
+
+    cleaned = extract_json(raw)
+
+    try:
+        return json.loads(cleaned)
+    except json.JSONDecodeError:
+        raise ValueError("Invalid JSON from LLM")
+
+
+
+
+from agents.planner.llm_generator import generate_raw_plan
+from agents.planner.parser import parse_plan
+from agents.planner.validator import validate_plan
+
+
+def create_plan(question, schema, semantic_layer=None):
+
+    for _ in range(2):  # retry SOLO si falla LLM output
+
+        raw = generate_raw_plan(question, schema, semantic_layer)
+
+        try:
+            plan = parse_plan(raw)
+        except:
+            continue  # si el LLM devuelve basura → retry
+
+        validate_plan(plan)
+
+        return plan
+
+    raise ValueError("Planner failed after retries")
+
+
+
+ALLOWED_TOOLS = {"sql", "insight"}
+
+TOOL_SEQUENCE_RULES = {
+    "sql": {
+        "max": 1,
+        "required": True
+    },
+    "insight": {
+        "allowed_after": ["sql"]
+    }
+}
+
+
+def validate_plan_structure(plan):
+
+    if not isinstance(plan, dict):
+        raise ValueError("Plan must be dict")
+
+    steps = plan.get("steps")
+
+    if not isinstance(steps, list) or len(steps) == 0:
+        raise ValueError("Steps must be non-empty list")
+
+    used_tools = []
+
+    for step in steps:
+
+        if not isinstance(step, dict):
+            raise ValueError("Step must be dict")
+
+        tool = step.get("tool")
+        input_data = step.get("input")
+
+        if tool not in ALLOWED_TOOLS:
+            raise ValueError(f"Invalid tool: {tool}")
+
+        if not isinstance(input_data, str):
+            raise ValueError("Step input must be string")
+
+        used_tools.append(tool)
+
+    # 🔥 reglas de negocio
+    if used_tools.count("sql") != 1:
+        raise ValueError("Must contain exactly 1 SQL step")
+
+    if "insight" in used_tools and used_tools[-1] != "insight":
+        raise ValueError("Insight must be last step")
+
+    return True
+
+
+
+
+
+from agents.planner.schema import validate_plan_structure
+
+
+def validate_plan(plan):
+
+    validate_plan_structure(plan)
+
+    if not plan.get("valid"):
+        raise ValueError("No pude entender la consulta.")
+
+    if not plan.get("related"):
+        raise ValueError("La consulta no está relacionada con los datos.")
+
+    return True
+
+
+
+
+from agents.registry import REGISTRY
+
+'''
+def execute_plan(plan, connector):
+
+    context = {}
+
+    for step in plan["steps"]:
+
+        tool_name = step["tool"]
+
+        if tool_name not in REGISTRY:
+            raise ValueError(f"Tool {tool_name} no registrada")
+
+        entry = REGISTRY[tool_name]
+
+        handler = entry["handler"]
+        tool = entry["tool"]
+
+        handler(step, context, connector, tool)
+
+    if "last_result" not in context:
+        raise ValueError("No hubo ejecución SQL")
+
+    print("CONTEXT FINAL:", context)
+    return {
+        "type": "table",
+        "data": context["last_result"],
+        "explanation": context.get("explanation")
+    }
+
+'''
+
+def execute_plan(plan, connector):
+
+    context = {}
+
+    # -------------------------
+    # 1. Ejecutar pasos normales
+    # -------------------------
+    for step in plan["steps"]:
+
+        tool_name = step["tool"]
+
+        if tool_name not in REGISTRY:
+            raise ValueError(f"Tool {tool_name} no registrada")
+
+        entry = REGISTRY[tool_name]
+
+        handler = entry["handler"]
+        tool = entry["tool"]
+
+        handler(step, context, connector, tool)
+
+    # -------------------------
+    # 2. Validar que hubo SQL
+    # -------------------------
+    if "last_result" not in context:
+        raise ValueError("No hubo ejecución SQL")
+
+    # -------------------------
+    # 3. 🔥 FORZAR INSIGHT (modo test)
+    # -------------------------
+    if "explanation" not in context:
+
+        insight_tool = REGISTRY["insight"]["tool"]
+
+        try:
+            result = insight_tool.run(
+                "Explain the result",
+                connector,
+                context
+            )
+
+            context["explanation"] = result
+
+        except Exception as e:
+            context["explanation"] = f"No se pudo generar insight: {str(e)}"
+
+    # -------------------------
+    # 4. DEBUG
+    # -------------------------
+    print("CONTEXT FINAL:", context)
+
+    # -------------------------
+    # 5. Response
+    # -------------------------
+    return {
+        "type": "table",
+        "data": context["last_result"],
+        "explanation": context.get("explanation")
+    }
+
+
+from agents.sql_validator import validate_sql
+
+MAX_ROWS = 1000
+
+
+def handle_sql(step, context, connector, tool):
+
+    query = step["input"]
+
+    schema = connector.get_schema()
+    columns = schema["column_name"].tolist()
+
+    validate_sql(query, columns)
+
+    result = tool.run(query, connector, context)
+
+    if result is None:
+        raise ValueError("SQL devolvió None")
+
+    if len(result) == 0:
+        raise ValueError("La consulta no devolvió resultados")
+
+    if len(result) > MAX_ROWS:
+        raise ValueError("Resultado demasiado grande")
+
+    context["last_result"] = result
+
+
+def handle_insight(step, context, connector, tool):
+
+    if "last_result" not in context:
+        raise ValueError("Insight sin datos")
+
+    result = tool.run(
+        step["input"],   # 🔥 SOLO string
+        connector,
+        context
+    )
+
+    context["explanation"] = result
+
+    return result
+
+
+
+from agents.handlers import handle_sql, handle_insight
+from tools.registry import get_tool
+
+REGISTRY = {
+    "sql": {
+        "handler": handle_sql,
+        "tool": get_tool("sql")
+    },
+    "insight": {
+        "handler": handle_insight,
+        "tool": get_tool("insight")
+    }
+}
+
+
+
+import logging
+from agents.planner.planner import create_plan
+from agents.executor import execute_plan
+
+logger = logging.getLogger(__name__)
+
+
+def answer_question(question, connector, semantic_layer=None):
+
+    try:
+        schema = connector.get_schema()
+
+        plan = create_plan(question, schema, semantic_layer)
+
+        logger.info("Plan generado", extra={
+            "question": question,
+            "plan": plan
+        })
+
+        return execute_plan(plan, connector)
+
+    except ValueError as e:
+        return {"type": "error", "message": str(e)}
+
+    except Exception as e:
+        return {"type": "error", "message": f"Error inesperado: {str(e)}"}
+
+
+
+
+import sqlglot
+
+ALLOWED_TABLE = "data"
+
+
+def validate_sql(query: str, schema_columns: list):
+
+    try:
+        parsed = sqlglot.parse_one(query)
+    except Exception:
+        raise ValueError("SQL inválido")
+
+    if parsed.key != "select":
+        raise ValueError("Solo SELECT permitido")
+
+    tables = {t.name for t in parsed.find_all(sqlglot.exp.Table)}
+    if tables != {ALLOWED_TABLE}:
+        raise ValueError("Tabla inválida")
+
+    used_columns = {c.name for c in parsed.find_all(sqlglot.exp.Column)}
+
+    invalid = used_columns - set(schema_columns)
+
+    if invalid:
+        raise ValueError(f"Columnas inválidas: {invalid}")
+
+    return True
+
+
+
+
+
+import pandas as pd
+from connectors.base import BaseConnector
+import duckdb
+
+class CSVConnector(BaseConnector):
+
+    def __init__(self, file):
+        self.df = pd.read_csv(file)
+        self.conn = duckdb.connect()
+        self.conn.register("data", self.df)
+
+    def execute(self, query: str):
+        return self.conn.execute(query).df()
+
+    def get_schema(self):
+        return self.conn.execute("DESCRIBE data").df()
+
+    def preview(self, limit=10):
+        return self.df.head(limit)
+
+    
+
+from connectors.duckdb import DuckDBConnector
+from connectors.postgres import PostgresConnector
+from connectors.mysql import MySQLConnector
+from connectors.api import APIConnector
+from connectors.excel import ExcelConnector
+from connectors.csv import CSVConnector
+from connectors.googleSheets import GoogleSheetsConnector
+
+
+def create_connector(source_type, config):
+
+    if source_type == "duckdb":
+        return DuckDBConnector(config.get("file"))  # <- usar get para aceptar None
+
+    elif source_type == "postgres":
+        return PostgresConnector(config["uri"])
+
+    elif source_type == "mysql":
+        return MySQLConnector(config["uri"])
+
+    elif source_type == "excel":
+        return ExcelConnector(config["file"])
+
+    elif source_type == "csv":
+        return CSVConnector(config["file"])
+
+    elif source_type == "api":
+        return APIConnector(config["base_url"])
+    
+    elif source_type == "google_sheets":
+        return GoogleSheetsConnector(config["url"])
+
+    else:
+        raise ValueError("Unsupported data source")
+
+
+
+class BaseConnector:
+
+    def execute(self, query: str):
+        raise NotImplementedError
+    
+    def get_schema(self):
+        raise NotImplementedError
+
+    def preview(self, limit=10):
+        raise NotImplementedError
+
+
+
+
+import os
+import requests
+from dotenv import load_dotenv
+
+load_dotenv()
+
+API_KEY = os.getenv("GROQ_API_KEY")
+
+API_URL = "https://api.groq.com/openai/v1/chat/completions"
+
+headers = {
+    "Authorization": f"Bearer {API_KEY}",
+    "Content-Type": "application/json"
+}
+
+
+def call_llm(prompt: str, system_prompt: str = "You are a helpful AI") -> str:
+
+    payload = {
+        "model": "llama-3.3-70b-versatile",
+        "messages": [
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": prompt}
+        ],
+        "temperature": 0.2
+    }
+
+    response = requests.post(API_URL, headers=headers, json=payload)
+
+    if response.status_code != 200:
+        raise Exception(response.text)
+
+    result = response.json()
+
+    return result["choices"][0]["message"]["content"]
+
+
+
+from core.llm import call_llm
+import json
+import re
+
+
+def extract_json(text: str):
+    match = re.search(r"\{.*\}", text, re.DOTALL)
+    if match:
+        return match.group(0)
+    return "{}"
+
+
+def generate_semantic_suggestions(columns):
+
+    prompt = f"""
+You are a data analyst.
+
+Given these columns:
+{columns}
+
+Generate business-friendly aliases and useful metrics.
+
+Return ONLY valid JSON.
+"""
+
+    raw = call_llm(prompt)
+
+    # 🔥 DEBUG ACÁ
+    print("RAW LLM:", raw)
+
+    cleaned = extract_json(raw)
+
+    try:
+        return json.loads(cleaned)
+    except:
+        return {"aliases": {}, "metrics": {}}
+
+
+
+
+def build_semantic_layer(columns, aliases=None, metrics=None):
+    return {
+        "columns": columns,
+        "aliases": aliases or {},
+        "metrics": metrics or {}
+    }
+
+
+def merge_semantic_layers(base_layer, extra_layer):
+    # Si uno es None → devolver el otro
+    if not base_layer:
+        return extra_layer
+
+    if not extra_layer:
+        return base_layer
+
+    merged = {
+        "columns": list(set(base_layer.get("columns", []) + extra_layer.get("columns", []))),
+        "aliases": {},
+        "metrics": {}
+    }
+
+    # -------------------------
+    # MERGE ALIASES
+    # -------------------------
+    merged["aliases"] = base_layer.get("aliases", {}).copy()
+
+    for col, values in extra_layer.get("aliases", {}).items():
+        if col in merged["aliases"]:
+            merged["aliases"][col] = list(set(merged["aliases"][col] + values))
+        else:
+            merged["aliases"][col] = values
+
+    # -------------------------
+    # MERGE METRICS
+    # -------------------------
+    merged["metrics"] = base_layer.get("metrics", {}).copy()
+
+    # 🔥 extra pisa base si hay conflicto
+    merged["metrics"].update(extra_layer.get("metrics", {}))
+
+    return merged
+
+
+import json
+import os
+import hashlib
+
+def get_dataset_id(source_type, config):
+    base = f"{source_type}_{str(config)}"
+    return hashlib.md5(base.encode()).hexdigest()
+
+def save_semantic_layer(dataset_id, semantic_layer):
+    os.makedirs("semantic_store", exist_ok=True)
+    path = f"semantic_store/{dataset_id}.json"
+
+    with open(path, "w") as f:
+        json.dump(semantic_layer, f, indent=2)
+
+def load_semantic_layer(dataset_id):
+    path = f"semantic_store/{dataset_id}.json"
+
+    if os.path.exists(path):
+        with open(path) as f:
+            return json.load(f)
+    return None
+
+def list_semantic_files():
+    path = "semantic_store"
+    if not os.path.exists(path):
+        return []
+    return [f for f in os.listdir(path) if f.endswith(".json")]
+
+def load_semantic_file(file_name):
+    path = os.path.join("semantic_store", file_name)
+    with open(path) as f:
+        return json.load(f)
+
+
+from core.llm import call_llm
+
+
+class InsightTool:
+
+    def run(self, question, connector, context):
+
+        df = context.get("last_result")
+
+        if df is None or df.empty:
+            return "No hay datos para analizar."
+
+        preview = df.head(20).to_string()
+
+        prompt = f"""
+Explain the result in simple business terms.
+
+Question:
+{question}
+
+Data:
+{preview}
+
+Rules:
+- Be concise
+- No SQL
+- Focus on insights
+"""
+
+        return call_llm(
+            prompt,
+            system_prompt="You are a senior business data analyst"
+        )
+
+
+
+from tools.sql_tool import SQLTool
+from tools.insight_tool import InsightTool
+
+TOOLS = {
+    "sql": SQLTool(),
+    "insight": InsightTool()
+}
+
+def get_tool(name):
+    if name not in TOOLS:
+        raise ValueError(f"Tool {name} not found")
+    return TOOLS[name]
+
+
+
+import logging
+
+logger = logging.getLogger(__name__)
+
+class SQLTool:
+
+    def run(self, sql, connector, context):
+
+        logger.info("Executing SQL", extra={"query": sql})
+
+        return connector.execute(sql)
+
+
+
+import streamlit as st
+from agents.service import answer_question
+
+
+def render_query_ui():
+
+    st.subheader("💬 Pregunta")
+
+    question = st.text_input("Escribí tu pregunta")
+
+    if st.button("Ejecutar"):
+
+        response = answer_question(
+            question,
+            st.session_state["connector"],
+            st.session_state.get("semantic_layer")
+        )
+
+        # 🔹 ERROR
+        if response.get("type") == "error":
+            st.error(response["message"])
+            return
+
+        # 🔹 DATA
+        if response.get("type") == "table":
+            st.subheader("📊 Resultado")
+            st.dataframe(response["data"])
+
+        # 🔹 INSIGHT
+        if response.get("explanation") is not None:
+            st.subheader("🧠 Insight")
+            st.write(response["explanation"])
+
+
+
+
+import streamlit as st
+
+from semantic.semantic_layer import build_semantic_layer, merge_semantic_layers
+from semantic.semantic_agent import generate_semantic_suggestions
+from semantic.utils import (
+    save_semantic_layer,
+    list_semantic_files,
+    load_semantic_file
+)
+
+def render_semantic_ui(connector):
+
+    preview = connector.preview()
+    columns = list(preview.columns)
+
+    st.subheader("🧠 Columnas")
+    st.write(columns)
+
+    st.subheader("📊 Tipos")
+    st.write(preview.dtypes)
+
+    # -------------------------
+    # MULTI SEMANTIC
+    # -------------------------
+
+    st.subheader("🧠 Usar Semantic Layers existentes")
+
+    semantic_files = list_semantic_files()
+
+    if semantic_files:
+
+        col1, col2 = st.columns(2)
+
+        with col1:
+            sem1_name = st.selectbox("Semantic 1", ["None"] + semantic_files)
+
+        with col2:
+            sem2_name = st.selectbox("Semantic 2", ["None"] + semantic_files)
+
+        if st.button("📥 Aplicar Semantic Layers"):
+
+            sem1 = load_semantic_file(sem1_name) if sem1_name != "None" else None
+            sem2 = load_semantic_file(sem2_name) if sem2_name != "None" else None
+
+            merged = merge_semantic_layers(sem1, sem2)
+
+            st.session_state["semantic_layer"] = merged
+
+            st.success("✅ Semantic layers aplicadas")
+            st.json(merged)
+
+    # -------------------------
+    # GENERAR
+    # -------------------------
+
+    st.subheader("✨ Generar nueva semántica")
+
+    if st.button("Generar automáticamente"):
+        raw = generate_semantic_suggestions(columns)
+
+        st.session_state["semantic_layer"] = build_semantic_layer(
+            columns,
+            raw.get("aliases"),
+            raw.get("metrics")
+        )
+
+        st.success("✅ Generada")
+
+    # -------------------------
+    # EDITAR
+    # -------------------------
+
+    if "semantic_layer" in st.session_state:
+
+        sl = st.session_state["semantic_layer"]
+
+        st.write("### 🔤 Aliases")
+        st.json(sl["aliases"])
+
+        st.write("### 📊 Métricas")
+        st.json(sl["metrics"])
+
+        st.write("### ✏️ Editar Aliases")
+
+        for col in columns:
+            current = sl["aliases"].get(col, [])
+            key_name = f"alias_{col}"
+
+            if key_name not in st.session_state:
+                st.session_state[key_name] = ", ".join(current)
+
+            value = st.text_input(col, key=key_name)
+            sl["aliases"][col] = [v.strip() for v in value.split(",") if v]
+
+        st.write("### ✏️ Editar Métricas")
+
+        for k, v in list(sl["metrics"].items()):
+            key_name = f"metric_{k}"
+
+            if key_name not in st.session_state:
+                st.session_state[key_name] = v
+
+            new_val = st.text_input(k, key=key_name)
+            sl["metrics"][k] = new_val
+
+        # AGREGAR
+        st.write("### ➕ Nueva Métrica")
+
+        new_name = st.text_input("Nombre")
+        new_expr = st.text_input("SQL")
+
+        if st.button("Agregar métrica"):
+            if new_name and new_expr:
+                sl["metrics"][new_name] = new_expr
+                st.success(f"✅ {new_name} agregada")
+
+        # GUARDAR
+        if st.button("💾 Guardar capa semántica"):
+            save_semantic_layer(
+                st.session_state["dataset_id"],
+                sl
+            )
+            st.success("✅ Guardado")
+
+        st.session_state["semantic_layer"] = sl
+
+
+
+
+import streamlit as st
+from connectors.factory import create_connector
+from semantic.utils import get_dataset_id, load_semantic_layer
+
+def render_source_selector():
+    source_type = st.selectbox(
+        "Seleccioná tipo de fuente",
+        ["duckdb", "postgres", "mysql", "excel", "csv", "google_sheets", "api"]
+    )
+
+    config = {}
+
+    if source_type == "duckdb":
+        use_demo = st.checkbox("Usar tabla demo", value=True)
+
+        uploaded_file = None
+        if not use_demo:
+            uploaded_file = st.file_uploader("Subí CSV/Parquet", type=["csv", "parquet"])
+
+        if uploaded_file:
+            config["file"] = uploaded_file
+        elif use_demo:
+            config["file"] = None
+
+    elif source_type in ["postgres", "mysql"]:
+        use_demo = st.checkbox("Usar demo", value=True)
+
+        if use_demo:
+            config["uri"] = None
+        else:
+            default_uri = (
+                "postgresql://user:pass@localhost:5432/db"
+                if source_type == "postgres"
+                else "mysql+pymysql://user:pass@localhost:3306/db"
+            )
+            config["uri"] = st.text_input("Connection String", default_uri)
+
+    elif source_type == "google_sheets":
+        config["url"] = st.text_input("Google Sheet URL")
+
+    elif source_type == "api":
+        config["base_url"] = st.text_input("Base URL", "https://api.example.com")
+
+    elif source_type in ["excel", "csv"]:
+        uploaded_file = st.file_uploader("📂 Subí archivo", type=["csv", "xlsx"])
+
+        if uploaded_file:
+            config["file"] = uploaded_file
+
+    if st.button("🚀 Conectar"):
+        connector = create_connector(source_type, config)
+
+        st.session_state["connector"] = connector
+        dataset_id = get_dataset_id(source_type, config)
+        st.session_state["dataset_id"] = dataset_id
+
+        loaded = load_semantic_layer(dataset_id)
+        if loaded:
+            st.session_state["semantic_layer"] = loaded
+            st.info("📂 Capa semántica cargada")
+
+        st.success("✅ Conectado")
+
+
+
+
+import streamlit as st
+from ui.ui_source import render_source_selector
+from ui.ui_semantic import render_semantic_ui
+from ui.ui_query import render_query_ui
+
+st.set_page_config(page_title="AI Data Analyst", layout="wide")
+
+st.title("🔥 AI Data Analyst")
+st.write("Conectá tu fuente de datos en segundos")
+
+render_source_selector()
+
+if "connector" in st.session_state:
+
+    connector = st.session_state["connector"]
+
+    st.subheader("📚 Schema")
+    st.dataframe(connector.get_schema())
+
+    st.subheader("👀 Preview")
+    preview = connector.preview()
+    st.dataframe(preview)
+
+    # 👇 SOLO ESTO
+    render_semantic_ui(connector)
+
+    render_query_ui()
+

@@ -6,7 +6,6 @@ TOOLS = {
     "insight": InsightTool()
 }
 
-
 def get_tool(name):
     if name not in TOOLS:
         raise ValueError(f"Tool {name} not found")
