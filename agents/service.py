@@ -1,23 +1,71 @@
-import logging
-from agents.planner.planner import create_plan
-from agents.executor import execute_plan
+from agents.filters import (
+    is_valid_question_basic,
+    is_question_related_fast
+)
 
-logger = logging.getLogger(__name__)
+from agents.sql_retry import generate_sql_with_retry
+from tools.insight_tool import InsightTool
 
 
-def answer_question(question, connector, semantic_layer=None):
+def answer_question(question, connector, semantic_layer=None, llm=None):
 
     try:
+        # -------------------------
+        # 1. BASIC FILTER
+        # -------------------------
+        if not is_valid_question_basic(question):
+            raise ValueError("Pregunta inválida")
+
+        # -------------------------
+        # 2. SEMANTIC FILTER
+        # -------------------------
+        if not is_question_related_fast(question, semantic_layer):
+            raise ValueError("Pregunta no relacionada con los datos")
+
+        # -------------------------
+        # 3. SCHEMA
+        # -------------------------
         schema = connector.get_schema()
+        columns = schema["column_name"].tolist()
 
-        plan = create_plan(question, schema, semantic_layer)
+        # -------------------------
+        # 4. SQL (con retry)
+        # -------------------------
+        sql = generate_sql_with_retry(
+            question,
+            schema,
+            semantic_layer,
+            columns,
+            llm=llm
+        )
 
-        logger.info("Plan generado", extra={
-            "question": question,
-            "plan": plan
-        })
+        # -------------------------
+        # 5. EXECUTE
+        # -------------------------
+        result = connector.execute(sql)
 
-        return execute_plan(plan, connector)
+        if result is None or len(result) == 0:
+            raise ValueError("Sin resultados")
+
+        # -------------------------
+        # 6. INSIGHT
+        # -------------------------
+        insight = None
+
+        try:
+            insight = InsightTool().run(
+                question,
+                connector,
+                {"last_result": result}
+            )
+        except:
+            pass
+
+        return {
+            "type": "table",
+            "data": result,
+            "explanation": insight
+        }
 
     except ValueError as e:
         return {"type": "error", "message": str(e)}

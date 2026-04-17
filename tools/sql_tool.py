@@ -1,4 +1,4 @@
-import logging
+'''import logging
 
 logger = logging.getLogger(__name__)
 
@@ -8,4 +8,4 @@ class SQLTool:
 
         logger.info("Executing SQL", extra={"query": sql})
 
-        return connector.execute(sql)
+        return connector.execute(sql)'''

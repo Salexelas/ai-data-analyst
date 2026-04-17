@@ -1,4 +1,4 @@
-from agents.sql_validator import validate_sql
+'''from agents.sql_validator import validate_sql
 
 MAX_ROWS = 1000
 
@@ -40,3 +40,4 @@ def handle_insight(step, context, connector, tool):
     context["explanation"] = result
 
     return result
+'''

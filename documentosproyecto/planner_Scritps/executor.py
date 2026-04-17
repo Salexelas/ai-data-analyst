@@ -1,4 +1,4 @@
-from agents.registry import REGISTRY
+#from agents.registry import REGISTRY
 
 '''
 def execute_plan(plan, connector):
@@ -30,7 +30,7 @@ def execute_plan(plan, connector):
     }
 
 '''
-
+'''
 def execute_plan(plan, connector):
 
     context = {}
@@ -90,3 +90,6 @@ def execute_plan(plan, connector):
         "data": context["last_result"],
         "explanation": context.get("explanation")
     }
+
+
+'''

@@ -56,7 +56,7 @@ def render_semantic_ui(connector):
     st.subheader("✨ Generar nueva semántica")
 
     if st.button("Generar automáticamente"):
-        raw = generate_semantic_suggestions(columns)
+        raw = generate_semantic_suggestions(columns,st.session_state["llm"])
 
         st.session_state["semantic_layer"] = build_semantic_layer(
             columns,

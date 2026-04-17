@@ -1,3 +1,30 @@
+//////////////////radon para funciones en carpetas/////////////////////
+
+Radon 
+
+radon cc agents core connectors semantic tools ui -s -a
+
+///////////////////////   fin para funciones en carpetas //////////////////////////////////
+
+
+
+/////////////////////////////lineas contrador ///////////////////////////////////
+
+radon raw agents core connectors semantic tools ui |
+Select-String -Pattern "\.py|LOC" |
+ForEach-Object { $_.ToString() } |
+ForEach-Object -Begin {$file=""} -Process {
+    if ($_ -match "\.py") { $file = $_ }
+    elseif ($_ -match "LOC:\s+(\d+)") {
+        [PSCustomObject]@{
+            File = $file
+            LOC = [int]$matches[1]
+        }
+    }
+} | Sort-Object LOC -Descending
+
+///////////////////////////////fin lineas contrador ///////////////////////////////////
+
 //////////////////////// obtener estructura (tree)//////////////////////////////////
 
 Get-ChildItem -Directory | Where-Object { $_.Name -ne "venv" } | ForEach-Object {

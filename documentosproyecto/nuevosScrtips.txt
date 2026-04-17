@@ -1,32 +1,142 @@
-************************************
+filters.py
 
-Usuario
- ↓
-LLM → Intent (tipado)
- ↓
-Validator
- ↓
-Semantic Layer
- ↓
-Query Builder
- ↓
-SQL Validator
- ↓
-DB
- ↓
-Post-processing (clima, cálculos, etc)
- ↓
-LLM (insight)
- ↓
-Response + Logs
+def is_valid_question_basic(question: str):
+    q = question.strip().lower()
+
+    if len(q) < 3:
+        return False
+
+    if not any(c.isalpha() for c in q):
+        return False
+
+    return True
 
 
-*******************************************************************************
+def is_question_related_fast(question, semantic_layer):
 
-from core.llm import call_llm
+    if not semantic_layer:
+        return True
+
+    q = question.lower()
+
+    terms = []
+
+    terms += list(semantic_layer.get("metrics", {}).keys())
+
+    for v in semantic_layer.get("aliases", {}).values():
+        if isinstance(v, list):
+            terms += v
+        else:
+            terms.append(v)
+
+    return any(t.lower() in q for t in terms)
 
 
-def generate_raw_plan(question, schema, semantic_layer=None):
+
+
+
+service.py
+from agents.filters import (
+    is_valid_question_basic,
+    is_question_related_fast
+)
+
+from agents.sql_retry import generate_sql_with_retry
+from tools.insight_tool import InsightTool
+
+
+def answer_question(question, connector, semantic_layer=None, llm=None):
+
+    try:
+        # -------------------------
+        # 1. BASIC FILTER
+        # -------------------------
+        if not is_valid_question_basic(question):
+            raise ValueError("Pregunta inválida")
+
+        # -------------------------
+        # 2. SEMANTIC FILTER
+        # -------------------------
+        if not is_question_related_fast(question, semantic_layer):
+            raise ValueError("Pregunta no relacionada con los datos")
+
+        # -------------------------
+        # 3. SCHEMA
+        # -------------------------
+        schema = connector.get_schema()
+        columns = schema["column_name"].tolist()
+
+        # -------------------------
+        # 4. SQL (con retry)
+        # -------------------------
+        sql = generate_sql_with_retry(
+            question,
+            schema,
+            semantic_layer,
+            columns,
+            llm=llm
+        )
+
+        # -------------------------
+        # 5. EXECUTE
+        # -------------------------
+        result = connector.execute(sql)
+
+        if result is None or len(result) == 0:
+            raise ValueError("Sin resultados")
+
+        # -------------------------
+        # 6. INSIGHT
+        # -------------------------
+        insight = None
+
+        try:
+            insight = InsightTool().run(
+                question,
+                connector,
+                {"last_result": result}
+            )
+        except:
+            pass
+
+        return {
+            "type": "table",
+            "data": result,
+            "explanation": insight
+        }
+
+    except ValueError as e:
+        return {"type": "error", "message": str(e)}
+
+    except Exception as e:
+        return {"type": "error", "message": f"Error inesperado: {str(e)}"}
+
+
+
+sql_cleaner.py
+import re
+
+def extract_sql(text: str):
+
+    # 🔥 caso 1: bloque ```sql
+    match = re.search(r"```sql(.*?)```", text, re.DOTALL | re.IGNORECASE)
+    if match:
+        return match.group(1).strip()
+
+    # 🔥 caso 2: cualquier SELECT
+    match = re.search(r"(SELECT .*?)(;|$)", text, re.IGNORECASE | re.DOTALL)
+    if match:
+        return match.group(1).strip()
+
+    return text.strip()
+
+
+
+sql_generator.py
+from core.llm_service import LLMService
+
+
+def generate_sql(question, schema, semantic_layer, llm):
 
     semantic_text = ""
 
@@ -38,25 +148,13 @@ Metrics: {semantic_layer.get("metrics")}
 """
 
     prompt = f"""
-You are a planning agent.
-
-Return ONLY JSON inside <json></json>.
-
-<json>
-{{
-  "valid": true/false,
-  "related": true/false,
-  "steps": [
-    {{ "tool": "sql", "input": "SQL query" }},
-    {{ "tool": "insight", "input": "user question" }}
-  ]
-}}
-</json>
+Generate a SQL query.
 
 Rules:
-- Only SELECT queries
+- Only SELECT
 - Table name is data
-- Columns with spaces MUST be quoted
+- Use correct columns
+- No explanation
 
 Schema:
 {schema}
@@ -67,317 +165,99 @@ Question:
 {question}
 """
 
-    return call_llm(prompt, system_prompt="You are a strict data planner")
-
-
-
-
-import json
-import re
-
-def extract_json(text: str):
-
-    match = re.search(r"<json>(.*?)</json>", text, re.DOTALL)
-
-    if not match:
-        raise ValueError("No JSON found")
-
-    return match.group(1)
-
-
-def parse_plan(raw: str):
-
-    cleaned = extract_json(raw)
-
-    try:
-        return json.loads(cleaned)
-    except json.JSONDecodeError:
-        raise ValueError("Invalid JSON from LLM")
-
-
-
-
-from agents.planner.llm_generator import generate_raw_plan
-from agents.planner.parser import parse_plan
-from agents.planner.validator import validate_plan
-
-
-def create_plan(question, schema, semantic_layer=None):
-
-    for _ in range(2):  # retry SOLO si falla LLM output
-
-        raw = generate_raw_plan(question, schema, semantic_layer)
-
-        try:
-            plan = parse_plan(raw)
-        except:
-            continue  # si el LLM devuelve basura → retry
-
-        validate_plan(plan)
-
-        return plan
-
-    raise ValueError("Planner failed after retries")
-
-
-
-ALLOWED_TOOLS = {"sql", "insight"}
-
-TOOL_SEQUENCE_RULES = {
-    "sql": {
-        "max": 1,
-        "required": True
-    },
-    "insight": {
-        "allowed_after": ["sql"]
-    }
-}
-
-
-def validate_plan_structure(plan):
-
-    if not isinstance(plan, dict):
-        raise ValueError("Plan must be dict")
-
-    steps = plan.get("steps")
-
-    if not isinstance(steps, list) or len(steps) == 0:
-        raise ValueError("Steps must be non-empty list")
-
-    used_tools = []
-
-    for step in steps:
-
-        if not isinstance(step, dict):
-            raise ValueError("Step must be dict")
-
-        tool = step.get("tool")
-        input_data = step.get("input")
-
-        if tool not in ALLOWED_TOOLS:
-            raise ValueError(f"Invalid tool: {tool}")
-
-        if not isinstance(input_data, str):
-            raise ValueError("Step input must be string")
-
-        used_tools.append(tool)
-
-    # 🔥 reglas de negocio
-    if used_tools.count("sql") != 1:
-        raise ValueError("Must contain exactly 1 SQL step")
-
-    if "insight" in used_tools and used_tools[-1] != "insight":
-        raise ValueError("Insight must be last step")
-
-    return True
-
-
-
-
-
-from agents.planner.schema import validate_plan_structure
-
-
-def validate_plan(plan):
-
-    validate_plan_structure(plan)
-
-    if not plan.get("valid"):
-        raise ValueError("No pude entender la consulta.")
-
-    if not plan.get("related"):
-        raise ValueError("La consulta no está relacionada con los datos.")
-
-    return True
-
-
-
-
-from agents.registry import REGISTRY
-
-'''
-def execute_plan(plan, connector):
-
-    context = {}
-
-    for step in plan["steps"]:
-
-        tool_name = step["tool"]
-
-        if tool_name not in REGISTRY:
-            raise ValueError(f"Tool {tool_name} no registrada")
-
-        entry = REGISTRY[tool_name]
-
-        handler = entry["handler"]
-        tool = entry["tool"]
-
-        handler(step, context, connector, tool)
-
-    if "last_result" not in context:
-        raise ValueError("No hubo ejecución SQL")
-
-    print("CONTEXT FINAL:", context)
-    return {
-        "type": "table",
-        "data": context["last_result"],
-        "explanation": context.get("explanation")
-    }
-
-'''
-
-def execute_plan(plan, connector):
-
-    context = {}
-
-    # -------------------------
-    # 1. Ejecutar pasos normales
-    # -------------------------
-    for step in plan["steps"]:
-
-        tool_name = step["tool"]
-
-        if tool_name not in REGISTRY:
-            raise ValueError(f"Tool {tool_name} no registrada")
-
-        entry = REGISTRY[tool_name]
-
-        handler = entry["handler"]
-        tool = entry["tool"]
-
-        handler(step, context, connector, tool)
-
-    # -------------------------
-    # 2. Validar que hubo SQL
-    # -------------------------
-    if "last_result" not in context:
-        raise ValueError("No hubo ejecución SQL")
-
-    # -------------------------
-    # 3. 🔥 FORZAR INSIGHT (modo test)
-    # -------------------------
-    if "explanation" not in context:
-
-        insight_tool = REGISTRY["insight"]["tool"]
-
-        try:
-            result = insight_tool.run(
-                "Explain the result",
-                connector,
-                context
-            )
-
-            context["explanation"] = result
-
-        except Exception as e:
-            context["explanation"] = f"No se pudo generar insight: {str(e)}"
-
-    # -------------------------
-    # 4. DEBUG
-    # -------------------------
-    print("CONTEXT FINAL:", context)
-
-    # -------------------------
-    # 5. Response
-    # -------------------------
-    return {
-        "type": "table",
-        "data": context["last_result"],
-        "explanation": context.get("explanation")
-    }
-
-
-from agents.sql_validator import validate_sql
-
-MAX_ROWS = 1000
-
-
-def handle_sql(step, context, connector, tool):
-
-    query = step["input"]
-
-    schema = connector.get_schema()
-    columns = schema["column_name"].tolist()
-
-    validate_sql(query, columns)
-
-    result = tool.run(query, connector, context)
-
-    if result is None:
-        raise ValueError("SQL devolvió None")
-
-    if len(result) == 0:
-        raise ValueError("La consulta no devolvió resultados")
-
-    if len(result) > MAX_ROWS:
-        raise ValueError("Resultado demasiado grande")
-
-    context["last_result"] = result
-
-
-def handle_insight(step, context, connector, tool):
-
-    if "last_result" not in context:
-        raise ValueError("Insight sin datos")
-
-    result = tool.run(
-        step["input"],   # 🔥 SOLO string
-        connector,
-        context
+    return llm.generate(
+        prompt,
+        system_prompt="You are a senior data analyst"
     )
 
-    context["explanation"] = result
-
-    return result
-
-
-
-from agents.handlers import handle_sql, handle_insight
-from tools.registry import get_tool
-
-REGISTRY = {
-    "sql": {
-        "handler": handle_sql,
-        "tool": get_tool("sql")
-    },
-    "insight": {
-        "handler": handle_insight,
-        "tool": get_tool("insight")
-    }
-}
-
-
-
-import logging
-from agents.planner.planner import create_plan
-from agents.executor import execute_plan
-
-logger = logging.getLogger(__name__)
-
-
-def answer_question(question, connector, semantic_layer=None):
-
-    try:
-        schema = connector.get_schema()
-
-        plan = create_plan(question, schema, semantic_layer)
-
-        logger.info("Plan generado", extra={
-            "question": question,
-            "plan": plan
-        })
-
-        return execute_plan(plan, connector)
-
-    except ValueError as e:
-        return {"type": "error", "message": str(e)}
-
-    except Exception as e:
-        return {"type": "error", "message": f"Error inesperado: {str(e)}"}
 
 
 
 
+sql_retry.py
+#from core.llm_service import LLMService
+from agents.sql_generator import generate_sql
+from agents.sql_validator import validate_sql
+from agents.sql_cleaner import extract_sql
+
+
+def should_retry(error: str):
+    error = error.lower()
+
+    if "columnas inválidas" in error:
+        return True
+    if "sql inválido" in error:
+        return True
+
+    return False
+
+
+def generate_sql_with_retry(
+    question,
+    schema,
+    semantic_layer,
+    columns,
+    llm,
+    max_retries=1
+):
+
+    last_error = None
+    sql = None
+
+    for attempt in range(max_retries + 1):
+
+        # -------------------------
+        # 1. Primera generación
+        # -------------------------
+        if attempt == 0:
+            raw = generate_sql(question, schema, semantic_layer,llm)
+            sql = extract_sql(raw)
+
+        # -------------------------
+        # 2. Retry inteligente
+        # -------------------------
+        else:
+            if not should_retry(last_error):
+                raise ValueError(last_error)
+
+            prompt = f"""
+The following SQL failed:
+
+{sql}
+
+Error:
+{last_error}
+
+Fix the SQL.
+
+Rules:
+- Only SELECT
+- Table name is data
+- Use only these columns: {columns}
+- No explanation
+"""
+
+            sql = llm.generate(
+                prompt,
+                system_prompt="You are a senior data engineer fixing SQL"
+            )
+
+        # -------------------------
+        # 3. Validación
+        # -------------------------
+        try:
+            validate_sql(sql, columns)
+            return sql
+
+        except Exception as e:
+            last_error = str(e)
+
+    raise ValueError(f"No se pudo generar SQL válido: {last_error}")
+
+
+
+
+sql_validator.py
 import sqlglot
 
 ALLOWED_TABLE = "data"
@@ -410,6 +290,22 @@ def validate_sql(query: str, schema_columns: list):
 
 
 
+
+base.pyclass BaseConnector:
+
+    def execute(self, query: str):
+        raise NotImplementedError
+    
+    def get_schema(self):
+        raise NotImplementedError
+
+    def preview(self, limit=10):
+        raise NotImplementedError
+
+
+
+
+csv.py
 import pandas as pd
 from connectors.base import BaseConnector
 import duckdb
@@ -430,8 +326,10 @@ class CSVConnector(BaseConnector):
     def preview(self, limit=10):
         return self.df.head(limit)
 
-    
 
+
+
+factory.py
 from connectors.duckdb import DuckDBConnector
 from connectors.postgres import PostgresConnector
 from connectors.mysql import MySQLConnector
@@ -469,20 +367,17 @@ def create_connector(source_type, config):
 
 
 
-class BaseConnector:
 
-    def execute(self, query: str):
-        raise NotImplementedError
-    
-    def get_schema(self):
-        raise NotImplementedError
+llm_service.py
+from core.llm import call_llm
 
-    def preview(self, limit=10):
-        raise NotImplementedError
+class LLMService:
+    def generate(self, prompt: str, system_prompt: str) -> str:
+        return call_llm(prompt, system_prompt)
 
 
 
-
+llm.py
 import os
 import requests
 from dotenv import load_dotenv
@@ -521,7 +416,8 @@ def call_llm(prompt: str, system_prompt: str = "You are a helpful AI") -> str:
 
 
 
-from core.llm import call_llm
+
+semantic_agent.py
 import json
 import re
 
@@ -533,7 +429,7 @@ def extract_json(text: str):
     return "{}"
 
 
-def generate_semantic_suggestions(columns):
+def generate_semantic_suggestions(columns, llm):
 
     prompt = f"""
 You are a data analyst.
@@ -546,7 +442,7 @@ Generate business-friendly aliases and useful metrics.
 Return ONLY valid JSON.
 """
 
-    raw = call_llm(prompt)
+    raw = llm.generate(prompt, "You are a data analyst")
 
     # 🔥 DEBUG ACÁ
     print("RAW LLM:", raw)
@@ -560,7 +456,7 @@ Return ONLY valid JSON.
 
 
 
-
+semantic_layer.py
 def build_semantic_layer(columns, aliases=None, metrics=None):
     return {
         "columns": columns,
@@ -605,6 +501,9 @@ def merge_semantic_layers(base_layer, extra_layer):
     return merged
 
 
+
+
+utils.py
 import json
 import os
 import hashlib
@@ -640,6 +539,8 @@ def load_semantic_file(file_name):
         return json.load(f)
 
 
+
+insight_tool.py
 from core.llm import call_llm
 
 
@@ -676,7 +577,7 @@ Rules:
 
 
 
-from tools.sql_tool import SQLTool
+registry.pyfrom tools.sql_tool import SQLTool
 from tools.insight_tool import InsightTool
 
 TOOLS = {
@@ -691,19 +592,10 @@ def get_tool(name):
 
 
 
-import logging
-
-logger = logging.getLogger(__name__)
-
-class SQLTool:
-
-    def run(self, sql, connector, context):
-
-        logger.info("Executing SQL", extra={"query": sql})
-
-        return connector.execute(sql)
 
 
+
+ui_query.py
 
 import streamlit as st
 from agents.service import answer_question
@@ -720,7 +612,8 @@ def render_query_ui():
         response = answer_question(
             question,
             st.session_state["connector"],
-            st.session_state.get("semantic_layer")
+            st.session_state.get("semantic_layer"),
+            st.session_state["llm"] 
         )
 
         # 🔹 ERROR
@@ -741,6 +634,7 @@ def render_query_ui():
 
 
 
+ui_semantic.py
 import streamlit as st
 
 from semantic.semantic_layer import build_semantic_layer, merge_semantic_layers
@@ -799,7 +693,7 @@ def render_semantic_ui(connector):
     st.subheader("✨ Generar nueva semántica")
 
     if st.button("Generar automáticamente"):
-        raw = generate_semantic_suggestions(columns)
+        raw = generate_semantic_suggestions(columns,st.session_state["llm"])
 
         st.session_state["semantic_layer"] = build_semantic_layer(
             columns,
@@ -869,7 +763,7 @@ def render_semantic_ui(connector):
 
 
 
-
+ui_source.py
 import streamlit as st
 from connectors.factory import create_connector
 from semantic.utils import get_dataset_id, load_semantic_layer
@@ -936,12 +830,17 @@ def render_source_selector():
 
 
 
+main.py
 import streamlit as st
+from core.llm_service import LLMService
 from ui.ui_source import render_source_selector
 from ui.ui_semantic import render_semantic_ui
 from ui.ui_query import render_query_ui
 
 st.set_page_config(page_title="AI Data Analyst", layout="wide")
+
+if "llm" not in st.session_state:
+    st.session_state["llm"] = LLMService()
 
 st.title("🔥 AI Data Analyst")
 st.write("Conectá tu fuente de datos en segundos")
@@ -964,3 +863,5 @@ if "connector" in st.session_state:
 
     render_query_ui()
 
+
+    

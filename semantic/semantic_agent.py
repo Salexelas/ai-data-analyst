@@ -1,4 +1,3 @@
-from core.llm import call_llm
 import json
 import re
 
@@ -10,7 +9,7 @@ def extract_json(text: str):
     return "{}"
 
 
-def generate_semantic_suggestions(columns):
+def generate_semantic_suggestions(columns, llm):
 
     prompt = f"""
 You are a data analyst.
@@ -23,7 +22,7 @@ Generate business-friendly aliases and useful metrics.
 Return ONLY valid JSON.
 """
 
-    raw = call_llm(prompt)
+    raw = llm.generate(prompt, "You are a data analyst")
 
     # 🔥 DEBUG ACÁ
     print("RAW LLM:", raw)
