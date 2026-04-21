@@ -1,9 +1,12 @@
-from core.llm import call_llm
+#from core.llm import call_llm
 
 
 class InsightTool:
 
-    def run(self, question, connector, context):
+    def __init__(self, llm):
+        self.llm = llm
+
+    def run(self, question, context):
 
         df = context.get("last_result")
 
@@ -27,7 +30,7 @@ Rules:
 - Focus on insights
 """
 
-        return call_llm(
+        return self.llm.generate(
             prompt,
             system_prompt="You are a senior business data analyst"
         )

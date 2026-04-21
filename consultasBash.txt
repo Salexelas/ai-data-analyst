@@ -4,6 +4,26 @@ Radon
 
 radon cc agents core connectors semantic tools ui -s -a
 
+                    ///////////////////
+
+radon cc agents core connectors semantic tools ui -s -a |
+ForEach-Object {
+    if ($_ -match '\((\d+)\)') {
+        [PSCustomObject]@{
+            Line = $_
+            Complexity = [int]$matches[1]
+        }
+    }
+} |
+Sort-Object Complexity -Descending |
+Select-Object -First 20 |
+ForEach-Object {
+    $_.Line
+}
+
+
+
+
 ///////////////////////   fin para funciones en carpetas //////////////////////////////////
 
 
