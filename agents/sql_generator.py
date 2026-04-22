@@ -1,7 +1,7 @@
 from core.llm_service import LLMService
 
 
-def generate_sql(question, schema, semantic_layer, llm):
+def generate_sql(question, schema, semantic_layer, llm, language="en"):
 
     semantic_text = ""
 
@@ -32,5 +32,5 @@ Question:
 
     return llm.generate(
         prompt,
-        system_prompt="You are a senior data analyst"
+        system_prompt=f"You are a senior data analyst. The user speaks {language}"
     )

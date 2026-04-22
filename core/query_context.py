@@ -16,3 +16,4 @@ class QueryContext:
     insight: str | None = None
 
     llm: any = None 
+    language: str | None = None

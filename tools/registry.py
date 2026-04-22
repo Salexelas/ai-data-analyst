@@ -1,8 +1,8 @@
-from tools.sql_tool import SQLTool
+#from tools.sql_tool import SQLTool
 from tools.insight_tool import InsightTool
 
 TOOLS = {
-    "sql": SQLTool(),
+    #"sql": SQLTool(),
     "insight": InsightTool()
 }
 

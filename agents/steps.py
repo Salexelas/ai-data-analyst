@@ -39,7 +39,8 @@ class GenerateSQLStep:
             ctx.schema,
             ctx.semantic_layer,
             ctx.columns,
-            llm=self.llm
+            llm=self.llm,
+            language=ctx.language
         )
 
 
@@ -65,7 +66,40 @@ class InsightStep:
         try:
             ctx.insight = InsightTool(self.llm).run(
                 ctx.question,
-                {"last_result": ctx.result}
+                {
+                    "last_result": ctx.result,
+                    "language": ctx.language   # 👈 NUEVO
+                }
             )
         except Exception as e:
             ctx.insight = f"Insight error: {str(e)}"
+
+
+class DetectLanguageStep:
+    name = "detect_language"
+
+    def run(self, ctx):
+        prompt = f"""
+Detect the language of this text.
+
+Text:
+{ctx.question}
+
+Return ONLY one code:
+es, en, pt, de, fr, it
+"""
+
+        try:
+            lang = ctx.llm.generate(
+                prompt,
+                system_prompt="You are a language detector"
+            ).strip().lower()
+
+            if lang not in ["es", "en", "pt", "de", "fr", "it"]:
+                lang = "en"
+
+        except:
+            lang = "en"
+
+        ctx.language = lang
+        print("LANG DETECTED:", ctx.language)

@@ -2,6 +2,7 @@ from core.query_context import QueryContext
 from core.pipeline import Pipeline
 from agents.steps import (
     ValidateStep,
+    DetectLanguageStep,  
     LoadSchemaStep,
     GenerateSQLStep,
     ExecuteSQLStep,
@@ -17,9 +18,11 @@ def answer_question(question, connector, semantic_layer=None, llm=None):
         semantic_layer=semantic_layer,
         llm=llm
     )
+   
 
     pipeline = Pipeline([
         ValidateStep(),
+        DetectLanguageStep(),
         LoadSchemaStep(),
         GenerateSQLStep(llm),
         ExecuteSQLStep(),
@@ -32,7 +35,8 @@ def answer_question(question, connector, semantic_layer=None, llm=None):
         return {
             "type": "table",
             "data": ctx.result,
-            "explanation": ctx.insight
+            "explanation": ctx.insight,
+            "language": ctx.language   # 👈 NUEVO
         }
 
     except Exception as e:

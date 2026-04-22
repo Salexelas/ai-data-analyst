@@ -21,6 +21,7 @@ def generate_sql_with_retry(
     semantic_layer,
     columns,
     llm,
+    language="en",
     max_retries=1
 ):
 
@@ -33,7 +34,7 @@ def generate_sql_with_retry(
         # 1. Primera generación
         # -------------------------
         if attempt == 0:
-            raw = generate_sql(question, schema, semantic_layer,llm)
+            raw = generate_sql(question, schema, semantic_layer, llm, language)
             sql = extract_sql(raw)
 
         # -------------------------
