@@ -11,10 +11,12 @@ class ValidateStep:
     name = "validate"
 
     def run(self, ctx):
-        if not is_valid_question_basic(ctx.question):
+        q = ctx.input.question
+
+        if not is_valid_question_basic(q):
             raise ValueError("Pregunta inválida")
 
-        if not is_question_related_fast(ctx.question, ctx.semantic_layer):
+        if not is_question_related_fast(q, ctx.input.semantic_layer):
             raise ValueError("Pregunta no relacionada con los datos")
 
 
@@ -22,9 +24,9 @@ class LoadSchemaStep:
     name = "load_schema"
 
     def run(self, ctx):
-        schema = ctx.connector.get_schema()
-        ctx.schema = schema
-        ctx.columns = schema["column_name"].tolist()
+        schema = ctx.input.connector.get_schema()
+        ctx.exec.schema = schema
+        ctx.exec.columns = schema["column_name"].tolist()
 
 
 class GenerateSQLStep:
@@ -34,13 +36,13 @@ class GenerateSQLStep:
         self.llm = llm
 
     def run(self, ctx):
-        ctx.sql = generate_sql_with_retry(
-            ctx.question,
-            ctx.schema,
-            ctx.semantic_layer,
-            ctx.columns,
+        ctx.exec.sql = generate_sql_with_retry(
+            ctx.input.question,
+            ctx.exec.schema,
+            ctx.input.semantic_layer,
+            ctx.exec.columns,
             llm=self.llm,
-            language=ctx.language
+            language=ctx.exec.language
         )
 
 
@@ -48,12 +50,12 @@ class ExecuteSQLStep:
     name = "execute_sql"
 
     def run(self, ctx):
-        result = ctx.connector.execute(ctx.sql)
+        result = ctx.input.connector.execute(ctx.exec.sql)
 
         if result is None or len(result) == 0:
             raise ValueError("Sin resultados")
 
-        ctx.result = result
+        ctx.output.result = result
 
 
 class InsightStep:
@@ -64,15 +66,15 @@ class InsightStep:
 
     def run(self, ctx):
         try:
-            ctx.insight = InsightTool(self.llm).run(
-                ctx.question,
+            ctx.output.insight = InsightTool(self.llm).run(
+                ctx.input.question,
                 {
-                    "last_result": ctx.result,
-                    "language": ctx.language   # 👈 NUEVO
+                    "last_result": ctx.output.result,
+                    "language": ctx.exec.language
                 }
             )
         except Exception as e:
-            ctx.insight = f"Insight error: {str(e)}"
+            ctx.output.insight = f"Insight error: {str(e)}"
 
 
 class DetectLanguageStep:
@@ -83,14 +85,14 @@ class DetectLanguageStep:
 Detect the language of this text.
 
 Text:
-{ctx.question}
+{ctx.input.question}
 
 Return ONLY one code:
 es, en, pt, de, fr, it
 """
 
         try:
-            lang = ctx.llm.generate(
+            lang = ctx.input.llm.generate(
                 prompt,
                 system_prompt="You are a language detector"
             ).strip().lower()
@@ -101,5 +103,5 @@ es, en, pt, de, fr, it
         except:
             lang = "en"
 
-        ctx.language = lang
-        print("LANG DETECTED:", ctx.language)
+        ctx.exec.language = lang
+        print("LANG DETECTED:", ctx.exec.language)

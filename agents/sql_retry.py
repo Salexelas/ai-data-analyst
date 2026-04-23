@@ -35,7 +35,9 @@ def generate_sql_with_retry(
         # -------------------------
         if attempt == 0:
             raw = generate_sql(question, schema, semantic_layer, llm, language)
+            print("RAW SQL:", raw)
             sql = extract_sql(raw)
+            print("CLEAN SQL:", sql)
 
         # -------------------------
         # 2. Retry inteligente

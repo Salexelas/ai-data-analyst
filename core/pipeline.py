@@ -16,6 +16,6 @@ class Pipeline:
 
             step.run(ctx)
 
-            print(f"[CTX] sql={getattr(ctx, 'sql', None)} | rows={len(ctx.result) if getattr(ctx, 'result', None) is not None else None}")
+            print(f"[CTX] sql={ctx.exec.sql} | rows={len(ctx.output.result) if ctx.output.result is not None else None}")
         
         return ctx
