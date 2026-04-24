@@ -53,3 +53,4 @@ def is_question_related_fast(question, semantic_layer):
         is_match(q, t) or token_overlap(q, t)
         for t in terms
     )
+
