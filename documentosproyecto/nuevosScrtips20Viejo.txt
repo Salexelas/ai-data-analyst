@@ -1,4 +1,25 @@
-filters.pydef is_valid_question_basic(question: str):
+import unicodedata
+import re
+
+def normalize(text):
+    text = text.lower()
+    text = unicodedata.normalize("NFKD", text)
+    text = "".join(c for c in text if not unicodedata.combining(c))
+    text = re.sub(r"[^a-z0-9\s]", "", text)
+    return text
+
+
+def is_match(q, term):
+    return term in q or q in term
+
+
+def token_overlap(a, b):
+    a_tokens = set(a.split())
+    b_tokens = set(b.split())
+    return len(a_tokens & b_tokens) > 0
+
+
+def is_valid_question_basic(question: str):
     q = question.strip().lower()
 
     if len(q) < 3:
@@ -15,8 +36,6 @@ def is_question_related_fast(question, semantic_layer):
     if not semantic_layer:
         return True
 
-    q = question.lower()
-
     terms = []
 
     terms += list(semantic_layer.get("metrics", {}).keys())
@@ -27,32 +46,31 @@ def is_question_related_fast(question, semantic_layer):
         else:
             terms.append(v)
 
-    return any(t.lower() in q for t in terms)
+    q = normalize(question)
+    terms = [normalize(t) for t in terms]
+
+    return any(
+        is_match(q, t) or token_overlap(q, t)
+        for t in terms
+    )
 
 
 
 service.py
-from core.query_context import QueryContext
+from core.query_context import QueryContext, InputContext
 from core.pipeline import Pipeline
-from agents.steps import (
-    ValidateStep,
-    DetectLanguageStep,  
-    LoadSchemaStep,
-    GenerateSQLStep,
-    ExecuteSQLStep,
-    InsightStep
-)
-
+from agents.steps import *
 
 def answer_question(question, connector, semantic_layer=None, llm=None):
 
     ctx = QueryContext(
-        question=question,
-        connector=connector,
-        semantic_layer=semantic_layer,
-        llm=llm
+        input=InputContext(
+            question=question,
+            connector=connector,
+            semantic_layer=semantic_layer,
+            llm=llm
+        )
     )
-   
 
     pipeline = Pipeline([
         ValidateStep(),
@@ -68,9 +86,9 @@ def answer_question(question, connector, semantic_layer=None, llm=None):
 
         return {
             "type": "table",
-            "data": ctx.result,
-            "explanation": ctx.insight,
-            "language": ctx.language   # 👈 NUEVO
+            "data": ctx.output.result,
+            "explanation": ctx.output.insight,
+            "language": ctx.exec.language
         }
 
     except Exception as e:
@@ -78,6 +96,7 @@ def answer_question(question, connector, semantic_layer=None, llm=None):
             "type": "error",
             "message": str(e)
         }
+
 
 
 
@@ -97,7 +116,6 @@ def extract_sql(text: str):
         return match.group(1).strip()
 
     return text.strip()
-
 
 
 sql_generator.py
@@ -143,7 +161,7 @@ Question:
 sql_retry.py
 #from core.llm_service import LLMService
 from agents.sql_generator import generate_sql
-from agents.sql_validator import validate_sql
+from agents.sql_guard import guard_sql
 from agents.sql_cleaner import extract_sql
 
 
@@ -178,7 +196,9 @@ def generate_sql_with_retry(
         # -------------------------
         if attempt == 0:
             raw = generate_sql(question, schema, semantic_layer, llm, language)
+            print("RAW SQL:", raw)
             sql = extract_sql(raw)
+            print("CLEAN SQL:", sql)
 
         # -------------------------
         # 2. Retry inteligente
@@ -213,7 +233,7 @@ Rules:
         # 3. Validación
         # -------------------------
         try:
-            validate_sql(sql, columns)
+            sql = guard_sql(sql, columns)
             return sql
 
         except Exception as e:
@@ -225,34 +245,79 @@ Rules:
 
 
 
-sql_validator.py
+
+
+
+
+sql_guard.py
 import sqlglot
+from sqlglot import exp
 
-ALLOWED_TABLE = "data"
+from core.settings import SQLConfig
+from core.constants import ALLOWED_TABLE
 
 
-def validate_sql(query: str, schema_columns: list):
+def guard_sql(query: str, schema_columns: list) -> str:
 
+    if not query:
+        raise ValueError("Empty query")
+
+    # -------------------------
+    # Parse
+    # -------------------------
     try:
         parsed = sqlglot.parse_one(query)
     except Exception:
         raise ValueError("SQL inválido")
 
-    if parsed.key != "select":
+    # -------------------------
+    # SOLO SELECT
+    # -------------------------
+    if not isinstance(parsed, exp.Select):
         raise ValueError("Solo SELECT permitido")
 
-    tables = {t.name for t in parsed.find_all(sqlglot.exp.Table)}
+    # -------------------------
+    # TABLA
+    # -------------------------
+    tables = {t.name for t in parsed.find_all(exp.Table)}
     if tables != {ALLOWED_TABLE}:
         raise ValueError("Tabla inválida")
 
-    used_columns = {c.name for c in parsed.find_all(sqlglot.exp.Column)}
-
+    # -------------------------
+    # COLUMNAS
+    # -------------------------
+    used_columns = {c.name for c in parsed.find_all(exp.Column)}
     invalid = used_columns - set(schema_columns)
 
     if invalid:
         raise ValueError(f"Columnas inválidas: {invalid}")
 
-    return True
+    # -------------------------
+    # JOIN CONTROL
+    # -------------------------
+    join_count = 0
+
+    for join in parsed.find_all(exp.Join):
+        join_count += 1
+
+        if join.args.get("kind") == "cross":
+            raise ValueError("CROSS JOIN no permitido")
+
+    if join_count > SQLConfig.MAX_JOINS:
+        raise ValueError("Demasiados JOINs")
+
+    # -------------------------
+    # LIMIT FORZADO
+    # -------------------------
+    if not parsed.args.get("limit"):
+        parsed.set(
+            "limit",
+            exp.Limit(expression=exp.Literal.number(SQLConfig.MAX_ROWS))
+        )
+
+    return parsed.sql()
+
+
 
 
 
@@ -264,16 +329,18 @@ from agents.filters import (
 
 from agents.sql_retry import generate_sql_with_retry
 from tools.insight_tool import InsightTool
-
+from agents.sql_guard import guard_sql
 
 class ValidateStep:
     name = "validate"
 
     def run(self, ctx):
-        if not is_valid_question_basic(ctx.question):
+        q = ctx.input.question
+
+        if not is_valid_question_basic(q):
             raise ValueError("Pregunta inválida")
 
-        if not is_question_related_fast(ctx.question, ctx.semantic_layer):
+        if not is_question_related_fast(q, ctx.input.semantic_layer):
             raise ValueError("Pregunta no relacionada con los datos")
 
 
@@ -281,9 +348,9 @@ class LoadSchemaStep:
     name = "load_schema"
 
     def run(self, ctx):
-        schema = ctx.connector.get_schema()
-        ctx.schema = schema
-        ctx.columns = schema["column_name"].tolist()
+        schema = ctx.input.connector.get_schema()
+        ctx.exec.schema = schema
+        ctx.exec.columns = schema["column_name"].tolist()
 
 
 class GenerateSQLStep:
@@ -293,13 +360,13 @@ class GenerateSQLStep:
         self.llm = llm
 
     def run(self, ctx):
-        ctx.sql = generate_sql_with_retry(
-            ctx.question,
-            ctx.schema,
-            ctx.semantic_layer,
-            ctx.columns,
+        ctx.exec.sql = generate_sql_with_retry(
+            ctx.input.question,
+            ctx.exec.schema,
+            ctx.input.semantic_layer,
+            ctx.exec.columns,
             llm=self.llm,
-            language=ctx.language
+            language=ctx.exec.language
         )
 
 
@@ -307,12 +374,14 @@ class ExecuteSQLStep:
     name = "execute_sql"
 
     def run(self, ctx):
-        result = ctx.connector.execute(ctx.sql)
+        safe_sql = guard_sql(ctx.exec.sql, ctx.exec.columns)
+        ctx.exec.safe_sql = safe_sql
+        result = ctx.input.connector.execute(safe_sql)
 
         if result is None or len(result) == 0:
             raise ValueError("Sin resultados")
 
-        ctx.result = result
+        ctx.output.result = result
 
 
 class InsightStep:
@@ -323,15 +392,15 @@ class InsightStep:
 
     def run(self, ctx):
         try:
-            ctx.insight = InsightTool(self.llm).run(
-                ctx.question,
+            ctx.output.insight = InsightTool(self.llm).run(
+                ctx.input.question,
                 {
-                    "last_result": ctx.result,
-                    "language": ctx.language   # 👈 NUEVO
+                    "last_result": ctx.output.result,
+                    "language": ctx.exec.language
                 }
             )
         except Exception as e:
-            ctx.insight = f"Insight error: {str(e)}"
+            ctx.output.insight = f"Insight error: {str(e)}"
 
 
 class DetectLanguageStep:
@@ -342,14 +411,14 @@ class DetectLanguageStep:
 Detect the language of this text.
 
 Text:
-{ctx.question}
+{ctx.input.question}
 
 Return ONLY one code:
 es, en, pt, de, fr, it
 """
 
         try:
-            lang = ctx.llm.generate(
+            lang = ctx.input.llm.generate(
                 prompt,
                 system_prompt="You are a language detector"
             ).strip().lower()
@@ -360,8 +429,45 @@ es, en, pt, de, fr, it
         except:
             lang = "en"
 
-        ctx.language = lang
-        print("LANG DETECTED:", ctx.language)
+        ctx.exec.language = lang
+        print("LANG DETECTED:", ctx.exec.language)
+
+
+
+
+constants.py
+ALLOWED_TABLE = "data"
+
+FORBIDDEN_SQL_NODES = (
+    "DELETE",
+    "UPDATE",
+    "INSERT",
+    "DROP",
+    "CREATE",
+    "ALTER"
+)
+
+
+
+settings.py
+import os
+from dotenv import load_dotenv
+
+load_dotenv()
+
+class SQLConfig:
+    MAX_ROWS = int(os.getenv("MAX_ROWS", 1000))
+    MAX_JOINS = int(os.getenv("MAX_JOINS", 3))
+
+class LLMConfig:
+    TIMEOUT = int(os.getenv("QUERY_TIMEOUT", 10))
+    MODEL = os.getenv("LLM_MODEL", "llama-3.3-70b-versatile")
+    TEMPERATURE = float(os.getenv("LLM_TEMPERATURE", 0.2))
+
+
+
+
+
 
 
 
@@ -402,6 +508,7 @@ class CSVConnector(BaseConnector):
         return self.df.head(limit)
 
 
+    
 
 factory.py
 from connectors.duckdb import DuckDBConnector
@@ -442,6 +549,7 @@ def create_connector(source_type, config):
 
 
 
+
 llm_service.py
 from core.llm import call_llm
 
@@ -456,6 +564,7 @@ llm.py
 import os
 import requests
 from dotenv import load_dotenv
+from core.settings import LLMConfig
 
 load_dotenv()
 
@@ -472,15 +581,20 @@ headers = {
 def call_llm(prompt: str, system_prompt: str = "You are a helpful AI") -> str:
 
     payload = {
-        "model": "llama-3.3-70b-versatile",
+        "model": LLMConfig.MODEL,
         "messages": [
             {"role": "system", "content": system_prompt},
             {"role": "user", "content": prompt}
         ],
-        "temperature": 0.2
+        "temperature": LLMConfig.TEMPERATURE
     }
 
-    response = requests.post(API_URL, headers=headers, json=payload)
+    response = requests.post(
+        API_URL,
+        headers=headers,
+        json=payload,
+        timeout=LLMConfig.TIMEOUT
+    )
 
     if response.status_code != 200:
         raise Exception(response.text)
@@ -488,7 +602,6 @@ def call_llm(prompt: str, system_prompt: str = "You are a helpful AI") -> str:
     result = response.json()
 
     return result["choices"][0]["message"]["content"]
-
 
 
 pipeline.py
@@ -510,34 +623,45 @@ class Pipeline:
 
             step.run(ctx)
 
-            print(f"[CTX] sql={getattr(ctx, 'sql', None)} | rows={len(ctx.result) if getattr(ctx, 'result', None) is not None else None}")
+            print(f"[CTX] sql={ctx.exec.sql} | rows={len(ctx.output.result) if ctx.output.result is not None else None}")
         
         return ctx
 
 
-    
+
 
 
 query_context.py
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Any
 import pandas as pd
 
+@dataclass
+class InputContext:
+    question: str
+    connector: Any
+    semantic_layer: dict | None
+    llm: Any
 
 @dataclass
-class QueryContext:
-    question: str
-    connector: any
-    semantic_layer: dict | None = None
-
-    schema: any = None
+class ExecutionContext:
+    schema: Any = None
     columns: list | None = None
     sql: str | None = None
+    language: str = "en"
+
+@dataclass
+class OutputContext:
     result: pd.DataFrame | None = None
     insight: str | None = None
 
-    llm: any = None 
-    language: str | None = None
+@dataclass
+class QueryContext:
+    input: InputContext
+    exec: ExecutionContext = field(default_factory=ExecutionContext)
+    output: OutputContext = field(default_factory=OutputContext)
+
+
 
 
 
@@ -580,8 +704,7 @@ Return ONLY valid JSON.
 
 
 
-semantic_layer.py
-def build_semantic_layer(columns, aliases=None, metrics=None):
+semantic_layer.pydef build_semantic_layer(columns, aliases=None, metrics=None):
     return {
         "columns": columns,
         "aliases": aliases or {},
@@ -663,10 +786,9 @@ def load_semantic_file(file_name):
         return json.load(f)
 
 
-    
 
-insight_tool.py
-#from core.llm import call_llm
+
+insight_tool.py#from core.llm import call_llm
 
 
 class InsightTool:
@@ -674,19 +796,22 @@ class InsightTool:
     def __init__(self, llm):
         self.llm = llm
 
-    def run(self, question, context, language="es"):
+    def run(self, question, context):
+
+        if "language" not in context:
+            raise ValueError("Language not provided in context")
 
         df = context.get("last_result")
 
         if df is None or df.empty:
             return "No hay datos para analizar."
 
-        lang = context.get("language", "en")
+        lang = context["language"]
 
         preview = df.head(20).to_string()
 
         prompt = f"""
-Explain the result in simple business terms.
+You are analyzing query results.
 
 Question:
 {question}
@@ -694,28 +819,35 @@ Question:
 Data:
 {preview}
 
-Rules:
-- Be concise
-- No SQL
-- Focus on insights
-- Always respond in {lang}
+Instructions:
+- Provide a concise business insight
+- Do not mention SQL
+- Focus on key patterns, trends, or anomalies
+
+IMPORTANT:
+- The response MUST be written in language: {lang}
+- Do NOT use any other language
 """
 
         return self.llm.generate(
             prompt,
-            system_prompt="You are a senior business data analyst"
+            system_prompt=f"""
+You are a senior business data analyst.
+
+CRITICAL RULE:
+- You ALWAYS respond in language: {lang}
+- You NEVER switch language
+"""
         )
 
 
 
-
-
 registry.py
-from tools.sql_tool import SQLTool
+#from tools.sql_tool import SQLTool
 from tools.insight_tool import InsightTool
 
 TOOLS = {
-    "sql": SQLTool(),
+    #"sql": SQLTool(),
     "insight": InsightTool()
 }
 
@@ -726,9 +858,7 @@ def get_tool(name):
 
 
 
-
-ui_query.py
-import streamlit as st
+ui_query.pyimport streamlit as st
 from agents.service import answer_question
 
 
@@ -962,7 +1092,6 @@ def render_source_selector():
 
 
 
-
 main.py
 import streamlit as st
 from core.llm_service import LLMService
@@ -995,3 +1124,4 @@ if "connector" in st.session_state:
     render_semantic_ui(connector)
 
     render_query_ui()
+

@@ -1,6 +1,7 @@
 import os
 import requests
 from dotenv import load_dotenv
+from core.settings import LLMConfig
 
 load_dotenv()
 
@@ -17,15 +18,20 @@ headers = {
 def call_llm(prompt: str, system_prompt: str = "You are a helpful AI") -> str:
 
     payload = {
-        "model": "llama-3.3-70b-versatile",
+        "model": LLMConfig.MODEL,
         "messages": [
             {"role": "system", "content": system_prompt},
             {"role": "user", "content": prompt}
         ],
-        "temperature": 0.2
+        "temperature": LLMConfig.TEMPERATURE
     }
 
-    response = requests.post(API_URL, headers=headers, json=payload)
+    response = requests.post(
+        API_URL,
+        headers=headers,
+        json=payload,
+        timeout=LLMConfig.TIMEOUT
+    )
 
     if response.status_code != 200:
         raise Exception(response.text)

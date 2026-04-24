@@ -1,6 +1,6 @@
 #from core.llm_service import LLMService
 from agents.sql_generator import generate_sql
-from agents.sql_validator import validate_sql
+from agents.sql_guard import guard_sql
 from agents.sql_cleaner import extract_sql
 
 
@@ -72,7 +72,7 @@ Rules:
         # 3. Validación
         # -------------------------
         try:
-            validate_sql(sql, columns)
+            sql = guard_sql(sql, columns)
             return sql
 
         except Exception as e:

@@ -5,7 +5,7 @@ from agents.filters import (
 
 from agents.sql_retry import generate_sql_with_retry
 from tools.insight_tool import InsightTool
-
+from agents.sql_guard import guard_sql
 
 class ValidateStep:
     name = "validate"
@@ -50,7 +50,9 @@ class ExecuteSQLStep:
     name = "execute_sql"
 
     def run(self, ctx):
-        result = ctx.input.connector.execute(ctx.exec.sql)
+        safe_sql = guard_sql(ctx.exec.sql, ctx.exec.columns)
+        ctx.exec.safe_sql = safe_sql
+        result = ctx.input.connector.execute(safe_sql)
 
         if result is None or len(result) == 0:
             raise ValueError("Sin resultados")
@@ -105,3 +107,4 @@ es, en, pt, de, fr, it
 
         ctx.exec.language = lang
         print("LANG DETECTED:", ctx.exec.language)
+
