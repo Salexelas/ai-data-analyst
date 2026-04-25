@@ -1,5 +1,16 @@
+filters.py
 import unicodedata
 import re
+
+def fuzzy_match_score(q, term):
+    q_tokens = set(q.split())
+    t_tokens = set(term.split())
+
+    if not t_tokens:
+        return 0
+
+    overlap = len(q_tokens & t_tokens)
+    return overlap / len(t_tokens)
 
 def normalize(text):
     text = text.lower()
@@ -36,23 +47,74 @@ def is_question_related_fast(question, semantic_layer):
     if not semantic_layer:
         return True
 
+    q = normalize(question)
+
     terms = []
 
+    # metrics
     terms += list(semantic_layer.get("metrics", {}).keys())
 
+    # aliases
     for v in semantic_layer.get("aliases", {}).values():
         if isinstance(v, list):
             terms += v
         else:
             terms.append(v)
 
-    q = normalize(question)
+    # 🔥 fallback real
+    terms += semantic_layer.get("columns", [])
+
     terms = [normalize(t) for t in terms]
 
-    return any(
-        is_match(q, t) or token_overlap(q, t)
-        for t in terms
-    )
+    def match_score(q, term):
+        q_tokens = set(q.split())
+        t_tokens = set(term.split())
+
+        if not t_tokens:
+            return 0
+
+        coverage = len(q_tokens & t_tokens) / len(t_tokens)
+        substring = 1 if term in q else 0
+
+        return coverage + 0.3 * substring
+
+    return any(match_score(q, t) >= 0.3 for t in terms)
+
+
+def detect_language_fast(text):
+    text = text.lower()
+
+    scores = {
+        "es": 0,
+        "en": 0,
+        "pt": 0,
+        "de": 0,
+        "fr": 0,
+        "it": 0
+    }
+
+    lang_keywords = {
+        "es": ["el", "la", "los", "las", "de", "que", "en", "y", "para", "con", "por", "estadisticas", "equipo"],
+        "en": ["the", "is", "are", "of", "and", "in", "for", "with", "stats", "team"],
+        "pt": ["o", "a", "os", "as", "de", "que", "em", "para", "com", "estatisticas", "equipe"],
+        "de": ["der", "die", "das", "und", "ist", "in", "für", "mit", "statistik", "mannschaft"],
+        "fr": ["le", "la", "les", "de", "et", "est", "dans", "pour", "avec", "statistiques", "equipe"],
+        "it": ["il", "lo", "la", "gli", "le", "di", "e", "è", "per", "con", "statistiche", "squadra"]
+    }
+
+    tokens = text.split()
+
+    for lang, keywords in lang_keywords.items():
+        for token in tokens:
+            if token in keywords:
+                scores[lang] += 1
+
+    best_lang = max(scores, key=scores.get)
+
+    if scores[best_lang] == 0:
+        return "en"
+
+    return best_lang
 
 
 
@@ -92,13 +154,28 @@ def answer_question(question, connector, semantic_layer=None, llm=None):
         }
 
     except Exception as e:
+        error_msg = str(e).lower()
+
+        print("❌ ERROR:", error_msg)
+
+        # errores esperables → fallback amigable
+        if any(x in error_msg for x in [
+            "sin resultados",
+            "columnas inválidas",
+            "sql inválido"
+        ]):
+            return {
+                "type": "table",
+                "data": [],
+                "explanation": "No encontré resultados claros. Probá reformular la pregunta.",
+                "language": "es"
+            }
+
+        # errores graves → mostrar error real
         return {
             "type": "error",
             "message": str(e)
         }
-
-
-
 
 sql_cleaner.py
 import re
@@ -142,6 +219,16 @@ Rules:
 - Use correct columns
 - No explanation
 
+INTENT HANDLING:
+- "top" → ORDER BY DESC
+- "bottom" → ORDER BY ASC
+- "average" → use AVG()
+- "total" → use SUM()
+
+AMBIGUITY:
+- If multiple matches (e.g. "Los Angeles"), return all matches using LIKE
+
+
 Schema:
 {schema}
 
@@ -157,11 +244,78 @@ Question:
     )
 
 
+sql_guard.py
+import sqlglot
+from sqlglot import exp
+
+from core.settings import SQLConfig
+from core.constants import ALLOWED_TABLE
+
+
+def guard_sql(query: str, schema_columns: list) -> str:
+
+    if not query:
+        raise ValueError("Empty query")
+
+    # -------------------------
+    # Parse
+    # -------------------------
+    try:
+        parsed = sqlglot.parse_one(query)
+    except Exception:
+        raise ValueError("SQL inválido")
+
+    # -------------------------
+    # SOLO SELECT
+    # -------------------------
+    if not isinstance(parsed, exp.Select):
+        raise ValueError("Solo SELECT permitido")
+
+    # -------------------------
+    # TABLA
+    # -------------------------
+    tables = {t.name for t in parsed.find_all(exp.Table)}
+    if tables != {ALLOWED_TABLE}:
+        raise ValueError("Tabla inválida")
+
+    # -------------------------
+    # COLUMNAS
+    # -------------------------
+    used_columns = {c.name for c in parsed.find_all(exp.Column)}
+    invalid = used_columns - set(schema_columns)
+
+    if invalid:
+        raise ValueError(f"Columnas inválidas: {invalid}")
+
+    # -------------------------
+    # JOIN CONTROL
+    # -------------------------
+    join_count = 0
+
+    for join in parsed.find_all(exp.Join):
+        join_count += 1
+
+        if join.args.get("kind") == "cross":
+            raise ValueError("CROSS JOIN no permitido")
+
+    if join_count > SQLConfig.MAX_JOINS:
+        raise ValueError("Demasiados JOINs")
+
+    # -------------------------
+    # LIMIT FORZADO
+    # -------------------------
+    if not parsed.args.get("limit"):
+        parsed.set(
+            "limit",
+            exp.Limit(expression=exp.Literal.number(SQLConfig.MAX_ROWS))
+        )
+
+    return parsed.sql()
 
 sql_retry.py
 #from core.llm_service import LLMService
 from agents.sql_generator import generate_sql
-from agents.sql_validator import validate_sql
+from agents.sql_guard import guard_sql
 from agents.sql_cleaner import extract_sql
 
 
@@ -183,7 +337,7 @@ def generate_sql_with_retry(
     columns,
     llm,
     language="en",
-    max_retries=1
+    max_retries=0
 ):
 
     last_error = None
@@ -196,7 +350,9 @@ def generate_sql_with_retry(
         # -------------------------
         if attempt == 0:
             raw = generate_sql(question, schema, semantic_layer, llm, language)
+            print("RAW SQL:", raw)
             sql = extract_sql(raw)
+            print("CLEAN SQL:", sql)
 
         # -------------------------
         # 2. Retry inteligente
@@ -231,7 +387,7 @@ Rules:
         # 3. Validación
         # -------------------------
         try:
-            validate_sql(sql, columns)
+            sql = guard_sql(sql, columns)
             return sql
 
         except Exception as e:
@@ -240,48 +396,16 @@ Rules:
     raise ValueError(f"No se pudo generar SQL válido: {last_error}")
 
 
-
-
-
-sql_validator.py
-import sqlglot
-
-ALLOWED_TABLE = "data"
-
-
-def validate_sql(query: str, schema_columns: list):
-
-    try:
-        parsed = sqlglot.parse_one(query)
-    except Exception:
-        raise ValueError("SQL inválido")
-
-    if parsed.key != "select":
-        raise ValueError("Solo SELECT permitido")
-
-    tables = {t.name for t in parsed.find_all(sqlglot.exp.Table)}
-    if tables != {ALLOWED_TABLE}:
-        raise ValueError("Tabla inválida")
-
-    used_columns = {c.name for c in parsed.find_all(sqlglot.exp.Column)}
-
-    invalid = used_columns - set(schema_columns)
-
-    if invalid:
-        raise ValueError(f"Columnas inválidas: {invalid}")
-
-    return True
-
-
 steps.py
 from agents.filters import (
     is_valid_question_basic,
-    is_question_related_fast
+    is_question_related_fast,
+    detect_language_fast
 )
 
 from agents.sql_retry import generate_sql_with_retry
 from tools.insight_tool import InsightTool
-
+from agents.sql_guard import guard_sql
 
 class ValidateStep:
     name = "validate"
@@ -293,7 +417,7 @@ class ValidateStep:
             raise ValueError("Pregunta inválida")
 
         if not is_question_related_fast(q, ctx.input.semantic_layer):
-            raise ValueError("Pregunta no relacionada con los datos")
+            print("⚠️ Low confidence question, continuing anyway")
 
 
 class LoadSchemaStep:
@@ -312,6 +436,7 @@ class GenerateSQLStep:
         self.llm = llm
 
     def run(self, ctx):
+        print("QUESTION:", ctx.input.question)
         ctx.exec.sql = generate_sql_with_retry(
             ctx.input.question,
             ctx.exec.schema,
@@ -320,13 +445,15 @@ class GenerateSQLStep:
             llm=self.llm,
             language=ctx.exec.language
         )
-
+        print("SQL GENERATED:", ctx.exec.sql)
 
 class ExecuteSQLStep:
     name = "execute_sql"
 
     def run(self, ctx):
-        result = ctx.input.connector.execute(ctx.exec.sql)
+        safe_sql = guard_sql(ctx.exec.sql, ctx.exec.columns)
+        ctx.exec.safe_sql = safe_sql
+        result = ctx.input.connector.execute(safe_sql)
 
         if result is None or len(result) == 0:
             raise ValueError("Sin resultados")
@@ -342,13 +469,24 @@ class InsightStep:
 
     def run(self, ctx):
         try:
+            df = ctx.output.result
+
+            if df is None or len(df) == 0:
+                ctx.output.insight = "No hay datos."
+                return
+
+            if len(df) > 50:
+                ctx.output.insight = "Resultado grande — insight omitido por performance."
+                return
+
             ctx.output.insight = InsightTool(self.llm).run(
                 ctx.input.question,
                 {
-                    "last_result": ctx.output.result,
+                    "last_result": df,
                     "language": ctx.exec.language
                 }
             )
+
         except Exception as e:
             ctx.output.insight = f"Insight error: {str(e)}"
 
@@ -357,30 +495,12 @@ class DetectLanguageStep:
     name = "detect_language"
 
     def run(self, ctx):
-        prompt = f"""
-Detect the language of this text.
-
-Text:
-{ctx.input.question}
-
-Return ONLY one code:
-es, en, pt, de, fr, it
-"""
-
-        try:
-            lang = ctx.input.llm.generate(
-                prompt,
-                system_prompt="You are a language detector"
-            ).strip().lower()
-
-            if lang not in ["es", "en", "pt", "de", "fr", "it"]:
-                lang = "en"
-
-        except:
-            lang = "en"
-
-        ctx.exec.language = lang
+        ctx.exec.language = detect_language_fast(ctx.input.question)
         print("LANG DETECTED:", ctx.exec.language)
+
+
+
+
 
 
 
@@ -399,8 +519,8 @@ class BaseConnector:
 
 
 
-
 csv.py
+from core.settings import SQLConfig
 import pandas as pd
 from connectors.base import BaseConnector
 import duckdb
@@ -413,7 +533,8 @@ class CSVConnector(BaseConnector):
         self.conn.register("data", self.df)
 
     def execute(self, query: str):
-        return self.conn.execute(query).df()
+        df = self.conn.execute(query).df()
+        return df.head(SQLConfig.MAX_ROWS)
 
     def get_schema(self):
         return self.conn.execute("DESCRIBE data").df()
@@ -422,7 +543,7 @@ class CSVConnector(BaseConnector):
         return self.df.head(limit)
 
 
-    
+
 
 factory.py
 from connectors.duckdb import DuckDBConnector
@@ -464,20 +585,81 @@ def create_connector(source_type, config):
 
 
 
+
+
+constants.py
+ALLOWED_TABLE = "data"
+
+FORBIDDEN_SQL_NODES = (
+    "DELETE",
+    "UPDATE",
+    "INSERT",
+    "DROP",
+    "CREATE",
+    "ALTER"
+)
+
+
+llm_hf.py
+import requests
+import os
+
+HUGGINGFACE_API_KEY = os.getenv("HUGGINGFACE_API_KEY")
+
+API_URL = "https://api-inference.huggingface.co/models/mistralai/Mistral-7B-Instruct-v0.2"
+
+headers = {
+    "Authorization": f"Bearer {HUGGINGFACE_API_KEY}"
+}
+
+def call_hf(prompt: str):
+
+    response = requests.post(
+        API_URL,
+        headers=headers,
+        json={"inputs": prompt},
+        timeout=3
+    )
+
+    if response.status_code != 200:
+        raise Exception("HF error")
+
+    result = response.json()
+
+    return result[0]["generated_text"]
+
+
 llm_service.py
 from core.llm import call_llm
+from core.llm_hf import call_hf
 
 class LLMService:
+
     def generate(self, prompt: str, system_prompt: str) -> str:
-        return call_llm(prompt, system_prompt)
 
+        full_prompt = system_prompt + "\n\n" + prompt
 
+        # 🔥 1. intento Groq (rápido)
+        try:
+            return call_llm(prompt, system_prompt)
+        except Exception as e:
+            print("⚠️ Groq falló:", e)
 
+        # 🔥 2. fallback HuggingFace
+        try:
+            return call_hf(full_prompt)
+        except Exception as e:
+            print("⚠️ HF falló:", e)
+
+        # 🔥 3. fallback final
+        return "No pude responder en este momento."
 
 llm.py
 import os
 import requests
 from dotenv import load_dotenv
+from core.settings import LLMConfig
+import time
 
 load_dotenv()
 
@@ -494,15 +676,25 @@ headers = {
 def call_llm(prompt: str, system_prompt: str = "You are a helpful AI") -> str:
 
     payload = {
-        "model": "llama-3.3-70b-versatile",
+        "model": LLMConfig.MODEL,
         "messages": [
             {"role": "system", "content": system_prompt},
             {"role": "user", "content": prompt}
         ],
-        "temperature": 0.2
+        "temperature": LLMConfig.TEMPERATURE
     }
 
-    response = requests.post(API_URL, headers=headers, json=payload)
+    start = time.time()
+
+    response = requests.post(
+        API_URL,
+        headers=headers,
+        json=payload,
+        timeout=LLMConfig.TIMEOUT
+    )
+
+    duration = time.time() - start
+    print(f"🔥 LLM RESPONSE TIME: {duration:.2f}s")
 
     if response.status_code != 200:
         raise Exception(response.text)
@@ -510,8 +702,6 @@ def call_llm(prompt: str, system_prompt: str = "You are a helpful AI") -> str:
     result = response.json()
 
     return result["choices"][0]["message"]["content"]
-
-
 
 pipeline.py
 class Step:
@@ -535,10 +725,6 @@ class Pipeline:
             print(f"[CTX] sql={ctx.exec.sql} | rows={len(ctx.output.result) if ctx.output.result is not None else None}")
         
         return ctx
-
-
-
-
 
 query_context.py
 from dataclasses import dataclass, field
@@ -569,6 +755,21 @@ class QueryContext:
     input: InputContext
     exec: ExecutionContext = field(default_factory=ExecutionContext)
     output: OutputContext = field(default_factory=OutputContext)
+
+settings.py
+import os
+from dotenv import load_dotenv
+
+load_dotenv()
+
+class SQLConfig:
+    MAX_ROWS = int(os.getenv("MAX_ROWS", 1000))
+    MAX_JOINS = int(os.getenv("MAX_JOINS", 3))
+
+class LLMConfig:
+    TIMEOUT = int(os.getenv("QUERY_TIMEOUT", 2))
+    MODEL = os.getenv("LLM_MODEL", "llama-3.3-70b-versatile") 
+    TEMPERATURE = float(os.getenv("LLM_TEMPERATURE", 0.2))
 
 
 
@@ -611,9 +812,8 @@ Return ONLY valid JSON.
     except:
         return {"aliases": {}, "metrics": {}}
 
-
-
-semantic_layer.pydef build_semantic_layer(columns, aliases=None, metrics=None):
+semantic_layer.py
+def build_semantic_layer(columns, aliases=None, metrics=None):
     return {
         "columns": columns,
         "aliases": aliases or {},
@@ -656,9 +856,6 @@ def merge_semantic_layers(base_layer, extra_layer):
 
     return merged
 
-
-
-
 utils.py
 import json
 import os
@@ -697,7 +894,10 @@ def load_semantic_file(file_name):
 
 
 
-insight_tool.py#from core.llm import call_llm
+
+
+insight_tool.py
+#from core.llm import call_llm
 
 
 class InsightTool:
@@ -750,7 +950,6 @@ CRITICAL RULE:
         )
 
 
-
 registry.py
 #from tools.sql_tool import SQLTool
 from tools.insight_tool import InsightTool
@@ -767,7 +966,8 @@ def get_tool(name):
 
 
 
-ui_query.pyimport streamlit as st
+ui_query.py
+import streamlit as st
 from agents.service import answer_question
 
 
@@ -933,7 +1133,6 @@ def render_semantic_ui(connector):
 
 
 
-
 ui_source.py
 import streamlit as st
 from connectors.factory import create_connector
@@ -1001,6 +1200,8 @@ def render_source_selector():
 
 
 
+
+
 main.py
 import streamlit as st
 from core.llm_service import LLMService
@@ -1033,4 +1234,3 @@ if "connector" in st.session_state:
     render_semantic_ui(connector)
 
     render_query_ui()
-

@@ -22,7 +22,7 @@ def generate_sql_with_retry(
     columns,
     llm,
     language="en",
-    max_retries=1
+    max_retries=0
 ):
 
     last_error = None

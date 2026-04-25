@@ -1,6 +1,16 @@
 import unicodedata
 import re
 
+def fuzzy_match_score(q, term):
+    q_tokens = set(q.split())
+    t_tokens = set(term.split())
+
+    if not t_tokens:
+        return 0
+
+    overlap = len(q_tokens & t_tokens)
+    return overlap / len(t_tokens)
+
 def normalize(text):
     text = text.lower()
     text = unicodedata.normalize("NFKD", text)
@@ -36,21 +46,71 @@ def is_question_related_fast(question, semantic_layer):
     if not semantic_layer:
         return True
 
+    q = normalize(question)
+
     terms = []
 
+    # metrics
     terms += list(semantic_layer.get("metrics", {}).keys())
 
+    # aliases
     for v in semantic_layer.get("aliases", {}).values():
         if isinstance(v, list):
             terms += v
         else:
             terms.append(v)
 
-    q = normalize(question)
+    # 🔥 fallback real
+    terms += semantic_layer.get("columns", [])
+
     terms = [normalize(t) for t in terms]
 
-    return any(
-        is_match(q, t) or token_overlap(q, t)
-        for t in terms
-    )
+    def match_score(q, term):
+        q_tokens = set(q.split())
+        t_tokens = set(term.split())
 
+        if not t_tokens:
+            return 0
+
+        coverage = len(q_tokens & t_tokens) / len(t_tokens)
+        substring = 1 if term in q else 0
+
+        return coverage + 0.3 * substring
+
+    return any(match_score(q, t) >= 0.5 for t in terms)
+
+
+def detect_language_fast(text):
+    text = text.lower()
+
+    scores = {
+        "es": 0,
+        "en": 0,
+        "pt": 0,
+        "de": 0,
+        "fr": 0,
+        "it": 0
+    }
+
+    lang_keywords = {
+        "es": ["el", "la", "los", "las", "de", "que", "en", "y", "para", "con", "por", "estadisticas", "equipo"],
+        "en": ["the", "is", "are", "of", "and", "in", "for", "with", "stats", "team"],
+        "pt": ["o", "a", "os", "as", "de", "que", "em", "para", "com", "estatisticas", "equipe"],
+        "de": ["der", "die", "das", "und", "ist", "in", "für", "mit", "statistik", "mannschaft"],
+        "fr": ["le", "la", "les", "de", "et", "est", "dans", "pour", "avec", "statistiques", "equipe"],
+        "it": ["il", "lo", "la", "gli", "le", "di", "e", "è", "per", "con", "statistiche", "squadra"]
+    }
+
+    tokens = text.split()
+
+    for lang, keywords in lang_keywords.items():
+        for token in tokens:
+            if token in keywords:
+                scores[lang] += 1
+
+    best_lang = max(scores, key=scores.get)
+
+    if scores[best_lang] == 0:
+        return "en"
+
+    return best_lang

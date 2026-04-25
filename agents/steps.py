@@ -1,6 +1,7 @@
 from agents.filters import (
     is_valid_question_basic,
-    is_question_related_fast
+    is_question_related_fast,
+    detect_language_fast
 )
 
 from agents.sql_retry import generate_sql_with_retry
@@ -17,7 +18,7 @@ class ValidateStep:
             raise ValueError("Pregunta inválida")
 
         if not is_question_related_fast(q, ctx.input.semantic_layer):
-            raise ValueError("Pregunta no relacionada con los datos")
+            print("⚠️ Low confidence question, continuing anyway")
 
 
 class LoadSchemaStep:
@@ -36,6 +37,7 @@ class GenerateSQLStep:
         self.llm = llm
 
     def run(self, ctx):
+        print("QUESTION:", ctx.input.question)
         ctx.exec.sql = generate_sql_with_retry(
             ctx.input.question,
             ctx.exec.schema,
@@ -44,7 +46,7 @@ class GenerateSQLStep:
             llm=self.llm,
             language=ctx.exec.language
         )
-
+        print("SQL GENERATED:", ctx.exec.sql)
 
 class ExecuteSQLStep:
     name = "execute_sql"
@@ -68,13 +70,24 @@ class InsightStep:
 
     def run(self, ctx):
         try:
+            df = ctx.output.result
+
+            if df is None or len(df) == 0:
+                ctx.output.insight = "No hay datos."
+                return
+
+            if len(df) > 50:
+                ctx.output.insight = "Resultado grande — insight omitido por performance."
+                return
+
             ctx.output.insight = InsightTool(self.llm).run(
                 ctx.input.question,
                 {
-                    "last_result": ctx.output.result,
+                    "last_result": df,
                     "language": ctx.exec.language
                 }
             )
+
         except Exception as e:
             ctx.output.insight = f"Insight error: {str(e)}"
 
@@ -83,28 +96,6 @@ class DetectLanguageStep:
     name = "detect_language"
 
     def run(self, ctx):
-        prompt = f"""
-Detect the language of this text.
-
-Text:
-{ctx.input.question}
-
-Return ONLY one code:
-es, en, pt, de, fr, it
-"""
-
-        try:
-            lang = ctx.input.llm.generate(
-                prompt,
-                system_prompt="You are a language detector"
-            ).strip().lower()
-
-            if lang not in ["es", "en", "pt", "de", "fr", "it"]:
-                lang = "en"
-
-        except:
-            lang = "en"
-
-        ctx.exec.language = lang
+        ctx.exec.language = detect_language_fast(ctx.input.question)
         print("LANG DETECTED:", ctx.exec.language)
 

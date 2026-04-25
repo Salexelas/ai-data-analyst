@@ -33,6 +33,24 @@ def answer_question(question, connector, semantic_layer=None, llm=None):
         }
 
     except Exception as e:
+        error_msg = str(e).lower()
+
+        print("❌ ERROR:", error_msg)
+
+        # errores esperables → fallback amigable
+        if any(x in error_msg for x in [
+            "sin resultados",
+            "columnas inválidas",
+            "sql inválido"
+        ]):
+            return {
+                "type": "table",
+                "data": [],
+                "explanation": "No encontré resultados claros. Probá reformular la pregunta.",
+                "language": "es"
+            }
+
+        # errores graves → mostrar error real
         return {
             "type": "error",
             "message": str(e)

@@ -21,6 +21,16 @@ Rules:
 - Use correct columns
 - No explanation
 
+INTENT HANDLING:
+- "top" → ORDER BY DESC
+- "bottom" → ORDER BY ASC
+- "average" → use AVG()
+- "total" → use SUM()
+
+AMBIGUITY:
+- If multiple matches (e.g. "Los Angeles"), return all matches using LIKE
+
+
 Schema:
 {schema}
 
