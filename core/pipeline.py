@@ -1,3 +1,6 @@
+from core.observability import log_event
+import time
+
 class Step:
     name = "base"
 
@@ -12,10 +15,37 @@ class Pipeline:
 
     def run(self, ctx):
         for step in self.steps:
-            print(f"[STEP] {step.name}")
+            start = time.time()
 
-            step.run(ctx)
+            log_event(
+                "step_start",
+                ctx.trace_id,
+                step=step.name
+            )
 
-            print(f"[CTX] sql={ctx.exec.sql} | rows={len(ctx.output.result) if ctx.output.result is not None else None}")
-        
+            try:
+                step.run(ctx)
+
+                duration = time.time() - start
+
+                log_event(
+                    "step_success",
+                    ctx.trace_id,
+                    step=step.name,
+                    duration=duration
+                )
+
+            except Exception as e:
+                duration = time.time() - start
+
+                log_event(
+                    "step_error",
+                    ctx.trace_id,
+                    step=step.name,
+                    duration=duration,
+                    error=str(e)
+                )
+
+                raise
+
         return ctx

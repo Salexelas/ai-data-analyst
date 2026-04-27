@@ -1,23 +1,24 @@
+from core.observability import log_event
 from core.llm import call_llm
-from core.llm_hf import call_hf
 
 class LLMService:
+    def generate(self, prompt: str, system_prompt: str, trace_id: str = None) -> str:
 
-    def generate(self, prompt: str, system_prompt: str) -> str:
+        if trace_id:
+            log_event(
+                "llm_request",
+                trace_id,
+                prompt=prompt[:500],
+                system_prompt=system_prompt
+            )
 
-        full_prompt = system_prompt + "\n\n" + prompt
+        result = call_llm(prompt, system_prompt)
 
-        # 🔥 1. intento Groq (rápido)
-        try:
-            return call_llm(prompt, system_prompt)
-        except Exception as e:
-            print("⚠️ Groq falló:", e)
+        if trace_id:
+            log_event(
+                "llm_response",
+                trace_id,
+                response=result[:500]
+            )
 
-        # 🔥 2. fallback HuggingFace
-        try:
-            return call_hf(full_prompt)
-        except Exception as e:
-            print("⚠️ HF falló:", e)
-
-        # 🔥 3. fallback final
-        return "No pude responder en este momento."
+        return result

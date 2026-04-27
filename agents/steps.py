@@ -3,7 +3,7 @@ from agents.filters import (
     is_question_related_fast,
     detect_language_fast
 )
-
+from core.observability import log_event
 from agents.sql_retry import generate_sql_with_retry
 from tools.insight_tool import InsightTool
 from agents.sql_guard import guard_sql
@@ -48,11 +48,22 @@ class GenerateSQLStep:
         )
         print("SQL GENERATED:", ctx.exec.sql)
 
+        log_event(
+            "sql_generated",
+            ctx.trace_id,
+            sql=ctx.exec.sql
+        )
+
 class ExecuteSQLStep:
     name = "execute_sql"
 
     def run(self, ctx):
         safe_sql = guard_sql(ctx.exec.sql, ctx.exec.columns)
+        log_event(
+            "sql_execute",
+            ctx.trace_id,
+            sql=safe_sql
+        )
         ctx.exec.safe_sql = safe_sql
         result = ctx.input.connector.execute(safe_sql)
 
@@ -60,7 +71,11 @@ class ExecuteSQLStep:
             raise ValueError("Sin resultados")
 
         ctx.output.result = result
-
+        log_event(
+            "sql_result",
+            ctx.trace_id,
+            rows=len(result)
+        )
 
 class InsightStep:
     name = "insight"

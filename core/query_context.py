@@ -26,3 +26,4 @@ class QueryContext:
     input: InputContext
     exec: ExecutionContext = field(default_factory=ExecutionContext)
     output: OutputContext = field(default_factory=OutputContext)
+    trace_id: str | None = None

@@ -42,5 +42,6 @@ Question:
 
     return llm.generate(
         prompt,
-        system_prompt=f"You are a senior data analyst. The user speaks {language}"
+        system_prompt=f"You are a senior data analyst. The user speaks {language}",
+        trace_id=getattr(llm, "trace_id", None)
     )
