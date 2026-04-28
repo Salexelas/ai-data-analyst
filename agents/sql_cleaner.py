@@ -1,4 +1,4 @@
-import re
+'''import re
 
 def extract_sql(text: str):
 
@@ -12,4 +12,4 @@ def extract_sql(text: str):
     if match:
         return match.group(1).strip()
 
-    return text.strip()
+    return text.strip()'''

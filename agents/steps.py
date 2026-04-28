@@ -37,7 +37,7 @@ class GenerateSQLStep:
         self.llm = llm
 
     def run(self, ctx):
-        print("QUESTION:", ctx.input.question)
+        log_event("question", ctx.trace_id, question=ctx.input.question)
         ctx.exec.sql = generate_sql_with_retry(
             ctx.input.question,
             ctx.exec.schema,
@@ -46,13 +46,8 @@ class GenerateSQLStep:
             llm=self.llm,
             language=ctx.exec.language
         )
-        print("SQL GENERATED:", ctx.exec.sql)
+        log_event("sql_generated", ctx.trace_id, sql=ctx.exec.sql)
 
-        log_event(
-            "sql_generated",
-            ctx.trace_id,
-            sql=ctx.exec.sql
-        )
 
 class ExecuteSQLStep:
     name = "execute_sql"
@@ -112,5 +107,5 @@ class DetectLanguageStep:
 
     def run(self, ctx):
         ctx.exec.language = detect_language_fast(ctx.input.question)
-        print("LANG DETECTED:", ctx.exec.language)
+        log_event("language_detected", ctx.trace_id, language=ctx.exec.language)
 

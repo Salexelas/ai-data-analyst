@@ -1,18 +1,19 @@
-#from core.llm_service import LLMService
-from agents.sql_generator import generate_sql
+from agents.sql_generator import generate_sql_structured
 from agents.sql_guard import guard_sql
-from agents.sql_cleaner import extract_sql
+from agents.sql_generator import LLMOutputFormatError
 
 
 def should_retry(error: str):
     error = error.lower()
 
-    if "columnas inválidas" in error:
-        return True
-    if "sql inválido" in error:
-        return True
+    retryable = [
+        "invalid json",
+        "missing 'sql'",
+        "sql inválido",
+        "columnas inválidas"
+    ]
 
-    return False
+    return any(x in error for x in retryable)
 
 
 def generate_sql_with_retry(
@@ -22,60 +23,57 @@ def generate_sql_with_retry(
     columns,
     llm,
     language="en",
-    max_retries=0
+    max_retries=2
 ):
 
     last_error = None
-    sql = None
 
     for attempt in range(max_retries + 1):
 
-        # -------------------------
-        # 1. Primera generación
-        # -------------------------
-        if attempt == 0:
-            raw = generate_sql(question, schema, semantic_layer, llm, language)
-            print("RAW SQL:", raw)
-            sql = extract_sql(raw)
-            print("CLEAN SQL:", sql)
+        try:
+            # 🔥 generación estructurada
+            parsed = generate_sql_structured(
+                question,
+                schema,
+                semantic_layer,
+                llm,
+                language
+            )
 
-        # -------------------------
-        # 2. Retry inteligente
-        # -------------------------
-        else:
+            sql = parsed["sql"]
+
+            # 🔥 validación dura
+            sql = guard_sql(sql, columns)
+
+            return sql
+
+        except Exception as e:
+
+            last_error = str(e)
+
             if not should_retry(last_error):
-                raise ValueError(last_error)
+                raise
 
-            prompt = f"""
-The following SQL failed:
-
-{sql}
+            # 🔁 retry con contexto (SIN parsear texto)
+            fix_prompt = f"""
+Your previous output was invalid.
 
 Error:
 {last_error}
 
-Fix the SQL.
+Fix it.
 
-Rules:
-- Only SELECT
-- Table name is data
-- Use only these columns: {columns}
-- No explanation
+Return ONLY valid JSON:
+
+{{
+  "sql": "SELECT ...",
+  "confidence": 0.0-1.0
+}}
 """
 
-            sql = llm.generate(
-                prompt,
-                system_prompt="You are a senior data engineer fixing SQL"
+            llm.generate(
+                fix_prompt,
+                system_prompt="Fix JSON output. No explanation."
             )
 
-        # -------------------------
-        # 3. Validación
-        # -------------------------
-        try:
-            sql = guard_sql(sql, columns)
-            return sql
-
-        except Exception as e:
-            last_error = str(e)
-
-    raise ValueError(f"No se pudo generar SQL válido: {last_error}")
+    raise ValueError(f"Failed after retries: {last_error}")
