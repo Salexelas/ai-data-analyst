@@ -27,6 +27,7 @@ def answer_question(question, connector, semantic_layer=None, llm=None):
     pipeline = Pipeline([
         ValidateStep(),
         DetectLanguageStep(),
+        IntentStep(llm), 
         LoadSchemaStep(),
         GenerateSQLStep(llm),
         ExecuteSQLStep(),

@@ -1,3 +1,4 @@
+import json
 from agents.sql_generator import generate_sql_structured
 from agents.sql_guard import guard_sql
 from agents.sql_generator import LLMOutputFormatError
@@ -10,7 +11,10 @@ def should_retry(error: str):
         "invalid json",
         "missing 'sql'",
         "sql inválido",
-        "columnas inválidas"
+        "columnas inválidas",
+        "tabla inválida",
+        "solo select",
+        "demasiados joins"
     ]
 
     return any(x in error for x in retryable)
@@ -23,57 +27,106 @@ def generate_sql_with_retry(
     columns,
     llm,
     language="en",
+    intent=None,
     max_retries=2
 ):
 
     last_error = None
+    previous_output = None
 
     for attempt in range(max_retries + 1):
 
         try:
-            # 🔥 generación estructurada
-            parsed = generate_sql_structured(
-                question,
-                schema,
-                semantic_layer,
-                llm,
-                language
-            )
 
-            sql = parsed["sql"]
+            # -------------------------
+            # 1. GENERACIÓN
+            # -------------------------
+            if previous_output is None:
 
-            # 🔥 validación dura
-            sql = guard_sql(sql, columns)
+                parsed = generate_sql_structured(
+                    question,
+                    schema,
+                    semantic_layer,
+                    llm,
+                    language,
+                    intent=intent
+                )
 
-            return sql
+            else:
+                # 🔥 FIX INTELIGENTE (CON CONTEXTO REAL)
+                fix_prompt = f"""
+You generated an invalid SQL query.
 
-        except Exception as e:
+Fix it using the error.
 
-            last_error = str(e)
+Context:
+Question: {question}
 
-            if not should_retry(last_error):
-                raise
+Schema:
+{schema}
 
-            # 🔁 retry con contexto (SIN parsear texto)
-            fix_prompt = f"""
-Your previous output was invalid.
+Semantic Layer:
+{semantic_layer}
+
+Intent:
+{intent}
+
+Previous output:
+{previous_output}
 
 Error:
 {last_error}
 
-Fix it.
+Rules:
+- Keep same intent
+- Do not invent columns
+- Fix ONLY the error
+- Return ONLY valid JSON
 
-Return ONLY valid JSON:
-
+Format:
 {{
   "sql": "SELECT ...",
   "confidence": 0.0-1.0
 }}
 """
 
-            llm.generate(
-                fix_prompt,
-                system_prompt="Fix JSON output. No explanation."
-            )
+                raw = llm.generate(
+                    fix_prompt,
+                    system_prompt="You fix SQL queries"
+                )
+
+                parsed = json.loads(raw)
+
+            # -------------------------
+            # 2. EXTRAER SQL
+            # -------------------------
+            sql = parsed["sql"]
+
+            # -------------------------
+            # 3. VALIDACIÓN LIVIANA
+            # -------------------------
+            if "select" not in sql.lower():
+                raise ValueError("SQL inválido")
+
+            if len(sql) < 10:
+                raise ValueError("SQL demasiado corto")
+
+            # -------------------------
+            # 4. 🔥 GUARD DENTRO DEL RETRY
+            # -------------------------
+            safe_sql = guard_sql(sql, columns)
+
+            # ✅ si pasa el guard, terminamos
+            return safe_sql
+
+        except Exception as e:
+
+            last_error = str(e)
+
+            # 👇 MUY IMPORTANTE: guardar salida previa SI existe
+            previous_output = parsed if 'parsed' in locals() else None
+
+            if not should_retry(last_error):
+                raise
 
     raise ValueError(f"Failed after retries: {last_error}")

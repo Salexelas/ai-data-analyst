@@ -15,6 +15,7 @@ class ExecutionContext:
     columns: list | None = None
     sql: str | None = None
     language: str = "en"
+    intent: dict | None = None   # 🔥 NUEVO
 
 @dataclass
 class OutputContext:

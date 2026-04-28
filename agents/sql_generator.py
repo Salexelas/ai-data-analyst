@@ -55,8 +55,17 @@ class LLMOutputFormatError(Exception):
     pass
 
 
-def build_prompt(question, schema, semantic_layer, language="en"):
+def build_prompt(question, schema, semantic_layer, intent=None, language="en"):
 
+    intent_text = ""
+    if intent:
+        intent_text = f"""
+    Intent:
+    Type: {intent.get("intent")}
+    Metric: {intent.get("metric")}
+    Dimension: {intent.get("dimension")}
+    """
+    
     semantic_text = ""
     if semantic_layer:
         semantic_text = f"""
@@ -87,6 +96,9 @@ INTENT:
 - "average" → AVG()
 - "total" → SUM()
 
+
+{intent_text}
+
 Schema:
 {schema}
 
@@ -111,9 +123,9 @@ def validate_llm_output(parsed):
         raise LLMOutputFormatError("Confidence must be numeric")
 
 
-def generate_sql_structured(question, schema, semantic_layer, llm, language="en"):
+def generate_sql_structured(question, schema, semantic_layer, llm, language="en", intent=None):
 
-    prompt = build_prompt(question, schema, semantic_layer, language)
+    prompt = build_prompt(question, schema, semantic_layer, intent, language)
 
     raw = llm.generate(
         prompt,

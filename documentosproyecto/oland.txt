@@ -1,0 +1,1451 @@
+filters.py
+import unicodedata
+import re
+
+def fuzzy_match_score(q, term):
+    q_tokens = set(q.split())
+    t_tokens = set(term.split())
+
+    if not t_tokens:
+        return 0
+
+    overlap = len(q_tokens & t_tokens)
+    return overlap / len(t_tokens)
+
+def normalize(text):
+    text = text.lower()
+    text = unicodedata.normalize("NFKD", text)
+    text = "".join(c for c in text if not unicodedata.combining(c))
+    text = re.sub(r"[^a-z0-9\s]", "", text)
+    return text
+
+
+def is_match(q, term):
+    return term in q or q in term
+
+
+def token_overlap(a, b):
+    a_tokens = set(a.split())
+    b_tokens = set(b.split())
+    return len(a_tokens & b_tokens) > 0
+
+
+def is_valid_question_basic(question: str):
+    q = question.strip().lower()
+
+    if len(q) < 3:
+        return False
+
+    if not any(c.isalpha() for c in q):
+        return False
+
+    return True
+
+
+def is_question_related_fast(question, semantic_layer):
+
+    if not semantic_layer:
+        return True
+
+    q = normalize(question)
+
+    terms = []
+
+    # metrics
+    terms += list(semantic_layer.get("metrics", {}).keys())
+
+    # aliases
+    for v in semantic_layer.get("aliases", {}).values():
+        if isinstance(v, list):
+            terms += v
+        else:
+            terms.append(v)
+
+    # 🔥 fallback real
+    terms += semantic_layer.get("columns", [])
+
+    terms = [normalize(t) for t in terms]
+
+    def match_score(q, term):
+        q_tokens = set(q.split())
+        t_tokens = set(term.split())
+
+        if not t_tokens:
+            return 0
+
+        coverage = len(q_tokens & t_tokens) / len(t_tokens)
+        substring = 1 if term in q else 0
+
+        return coverage + 0.3 * substring
+
+    return any(match_score(q, t) >= 0.5 for t in terms)
+
+
+def detect_language_fast(text):
+    text = text.lower()
+
+    scores = {
+        "es": 0,
+        "en": 0,
+        "pt": 0,
+        "de": 0,
+        "fr": 0,
+        "it": 0
+    }
+
+    lang_keywords = {
+        "es": ["el", "la", "los", "las", "de", "que", "en", "y", "para", "con", "por", "estadisticas", "equipo"],
+        "en": ["the", "is", "are", "of", "and", "in", "for", "with", "stats", "team"],
+        "pt": ["o", "a", "os", "as", "de", "que", "em", "para", "com", "estatisticas", "equipe"],
+        "de": ["der", "die", "das", "und", "ist", "in", "für", "mit", "statistik", "mannschaft"],
+        "fr": ["le", "la", "les", "de", "et", "est", "dans", "pour", "avec", "statistiques", "equipe"],
+        "it": ["il", "lo", "la", "gli", "le", "di", "e", "è", "per", "con", "statistiche", "squadra"]
+    }
+
+    tokens = text.split()
+
+    for lang, keywords in lang_keywords.items():
+        for token in tokens:
+            if token in keywords:
+                scores[lang] += 1
+
+    best_lang = max(scores, key=scores.get)
+
+    if scores[best_lang] == 0:
+        return "en"
+
+    return best_lang
+
+
+
+
+intent_decorator.py
+import json
+
+def detect_intent(question: str, llm):
+
+    prompt = f"""
+Classify the user intent.
+
+Return ONLY JSON:
+
+{{
+  "intent": "top | bottom | average | total | comparison | distribution | unknown",
+  "metric": "string or null",
+  "dimension": "string or null"
+}}
+
+Question:
+{question}
+"""
+
+    raw = llm.generate(prompt, system_prompt="Intent classifier")
+
+    try:
+        return json.loads(raw)
+    except:
+        return {
+            "intent": "unknown",
+            "metric": None,
+            "dimension": None
+        }
+
+
+
+
+
+service.py
+from core.query_context import QueryContext, InputContext
+from core.pipeline import Pipeline
+from agents.steps import *
+from core.observability import new_trace_id, log_event
+
+def answer_question(question, connector, semantic_layer=None, llm=None):
+
+    trace_id = new_trace_id()
+
+    ctx = QueryContext(
+        input=InputContext(
+            question=question,
+            connector=connector,
+            semantic_layer=semantic_layer,
+            llm=llm
+        ),
+        trace_id=trace_id
+    )
+
+    # 🔴 START
+    log_event(
+        "request_start",
+        trace_id,
+        question=question
+    )
+
+    pipeline = Pipeline([
+        ValidateStep(),
+        DetectLanguageStep(),
+        IntentStep(llm), 
+        LoadSchemaStep(),
+        GenerateSQLStep(llm),
+        ExecuteSQLStep(),
+        InsightStep(llm)
+    ])
+
+    try:
+        ctx = pipeline.run(ctx)
+
+        # 🟢 SUCCESS (ahora sí, después de ejecutar)
+        log_event(
+            "request_success",
+            trace_id,
+            rows=len(ctx.output.result) if ctx.output.result is not None else 0
+        )
+
+        return {
+            "type": "table",
+            "data": ctx.output.result,
+            "explanation": ctx.output.insight,
+            "language": ctx.exec.language
+        }
+
+    except Exception as e:
+
+        # 🔴 ERROR (dentro del except)
+        log_event(
+            "request_error",
+            trace_id,
+            error=str(e)
+        )
+
+        error_msg = str(e).lower()
+
+        print("❌ ERROR:", error_msg)
+
+        # fallback amigable
+        if any(x in error_msg for x in [
+            "sin resultados",
+            "columnas inválidas",
+            "sql inválido"
+        ]):
+            return {
+                "type": "table",
+                "data": [],
+                "explanation": "No encontré resultados claros. Probá reformular la pregunta.",
+                "language": "es"
+            }
+
+        return {
+            "type": "error",
+            "message": str(e)
+        }
+
+
+
+
+
+
+
+sql_generator.py
+'''from core.llm_service import LLMService
+
+
+def generate_sql(question, schema, semantic_layer, llm, language="en"):
+
+    semantic_text = ""
+
+    if semantic_layer:
+        semantic_text = f"""
+Semantic Layer:
+Aliases: {semantic_layer.get("aliases")}
+Metrics: {semantic_layer.get("metrics")}
+"""
+
+    prompt = f"""
+Generate a SQL query.
+
+Rules:
+- Only SELECT
+- Table name is data
+- Use correct columns
+- No explanation
+
+INTENT HANDLING:
+- "top" → ORDER BY DESC
+- "bottom" → ORDER BY ASC
+- "average" → use AVG()
+- "total" → use SUM()
+
+AMBIGUITY:
+- If multiple matches (e.g. "Los Angeles"), return all matches using LIKE
+
+
+Schema:
+{schema}
+
+{semantic_text}
+
+Question:
+{question}
+"""
+
+    return llm.generate(
+        prompt,
+        system_prompt=f"You are a senior data analyst. The user speaks {language}",
+        trace_id=getattr(llm, "trace_id", None)
+    )'''
+
+
+
+import json
+
+
+class LLMOutputFormatError(Exception):
+    pass
+
+
+def build_prompt(question, schema, semantic_layer, intent=None, language="en"):
+
+    intent_text = ""
+    if intent:
+        intent_text = f"""
+    Intent:
+    Type: {intent.get("intent")}
+    Metric: {intent.get("metric")}
+    Dimension: {intent.get("dimension")}
+    """
+    
+    semantic_text = ""
+    if semantic_layer:
+        semantic_text = f"""
+Semantic Layer:
+Aliases: {semantic_layer.get("aliases")}
+Metrics: {semantic_layer.get("metrics")}
+"""
+
+    return f"""
+Return ONLY valid JSON.
+
+Format:
+{{
+  "sql": "string",
+  "confidence": float
+}}
+
+Rules:
+- Only SELECT
+- Table name is data
+- Use correct columns
+- No explanation
+- No markdown
+
+INTENT:
+- "top" → ORDER BY DESC
+- "bottom" → ORDER BY ASC
+- "average" → AVG()
+- "total" → SUM()
+
+
+{intent_text}
+
+Schema:
+{schema}
+
+{semantic_text}
+
+Question:
+{question}
+"""
+
+
+def validate_llm_output(parsed):
+    if not isinstance(parsed, dict):
+        raise LLMOutputFormatError("Output is not a JSON object")
+
+    if "sql" not in parsed:
+        raise LLMOutputFormatError("Missing 'sql' field")
+
+    if not isinstance(parsed["sql"], str):
+        raise LLMOutputFormatError("SQL must be string")
+
+    if "confidence" in parsed and not isinstance(parsed["confidence"], (int, float)):
+        raise LLMOutputFormatError("Confidence must be numeric")
+
+
+def generate_sql_structured(question, schema, semantic_layer, llm, language="en", intent=None):
+
+    prompt = build_prompt(question, schema, semantic_layer, intent, language)
+
+    raw = llm.generate(
+        prompt,
+        system_prompt="You are a senior data analyst. Output ONLY valid JSON.",
+        trace_id=getattr(llm, "trace_id", None)
+    )
+
+    try:
+        parsed = json.loads(raw)
+    except Exception:
+        raise LLMOutputFormatError("Invalid JSON")
+
+    if not isinstance(parsed, dict):
+        raise LLMOutputFormatError("Output is not a JSON object")
+
+    if "sql" not in parsed:
+        raise LLMOutputFormatError("Missing 'sql'")
+
+    return parsed
+
+
+
+
+
+
+
+sql_guard.py
+import sqlglot
+from sqlglot import exp
+
+from core.settings import SQLConfig
+from core.constants import ALLOWED_TABLE
+
+
+def guard_sql(query: str, schema_columns: list) -> str:
+
+    if not query:
+        raise ValueError("Empty query")
+
+    # -------------------------
+    # Parse
+    # -------------------------
+    try:
+        parsed = sqlglot.parse_one(query)
+    except Exception:
+        raise ValueError("SQL inválido")
+
+    # -------------------------
+    # SOLO SELECT
+    # -------------------------
+    if not isinstance(parsed, exp.Select):
+        raise ValueError("Solo SELECT permitido")
+
+    # -------------------------
+    # TABLA
+    # -------------------------
+    tables = {t.name for t in parsed.find_all(exp.Table)}
+    if tables != {ALLOWED_TABLE}:
+        raise ValueError("Tabla inválida")
+
+    # -------------------------
+    # COLUMNAS
+    # -------------------------
+    used_columns = {c.name for c in parsed.find_all(exp.Column)}
+    invalid = used_columns - set(schema_columns)
+
+    if invalid:
+        raise ValueError(f"Columnas inválidas: {invalid}")
+
+    # -------------------------
+    # JOIN CONTROL
+    # -------------------------
+    join_count = 0
+
+    for join in parsed.find_all(exp.Join):
+        join_count += 1
+
+        if join.args.get("kind") == "cross":
+            raise ValueError("CROSS JOIN no permitido")
+
+    if join_count > SQLConfig.MAX_JOINS:
+        raise ValueError("Demasiados JOINs")
+
+    # -------------------------
+    # LIMIT FORZADO
+    # -------------------------
+    if not parsed.args.get("limit"):
+        parsed.set(
+            "limit",
+            exp.Limit(expression=exp.Literal.number(SQLConfig.MAX_ROWS))
+        )
+
+    return parsed.sql()
+
+
+
+sql_retry.py
+import json
+from agents.sql_generator import generate_sql_structured
+from agents.sql_guard import guard_sql
+from agents.sql_generator import LLMOutputFormatError
+
+
+def should_retry(error: str):
+    error = error.lower()
+
+    retryable = [
+        "invalid json",
+        "missing 'sql'",
+        "sql inválido",
+        "columnas inválidas"
+    ]
+
+    return any(x in error for x in retryable)
+
+
+def generate_sql_with_retry(
+    question,
+    schema,
+    semantic_layer,
+    columns,
+    llm,
+    language="en",
+    intent=None,
+    max_retries=2
+):
+
+    last_error = None
+    previous_output = None
+
+    for attempt in range(max_retries + 1):
+
+        try:
+
+            # -------------------------
+            # 1. GENERACIÓN NORMAL
+            # -------------------------
+            if previous_output is None:
+
+                parsed = generate_sql_structured(
+                    question,
+                    schema,
+                    semantic_layer,
+                    llm,
+                    language,
+                    intent=intent
+                )
+
+            # -------------------------
+            # 2. FIX REAL (NO CIEGO)
+            # -------------------------
+            else:
+
+                fix_prompt = f"""
+You generated an invalid SQL query.
+
+You MUST fix it.
+
+Context:
+Question: {question}
+
+Schema:
+{schema}
+
+Semantic Layer:
+{semantic_layer}
+
+Intent:
+{intent}
+
+Previous output:
+{previous_output}
+
+Error:
+{last_error}
+
+Rules:
+- Keep same intent
+- Do not invent columns
+- Fix ONLY the error
+- Return ONLY valid JSON
+
+Format:
+{{
+  "sql": "SELECT ...",
+  "confidence": 0.0-1.0
+}}
+"""
+
+                raw = llm.generate(
+                    fix_prompt,
+                    system_prompt="You fix SQL queries"
+                )
+
+                parsed = json.loads(raw)
+
+            sql = parsed["sql"]
+
+            # -------------------------
+            # 3. VALIDACIÓN LIVIANA (ANTES DEL GUARD)
+            # -------------------------
+            if "select" not in sql.lower():
+                raise ValueError("SQL inválido")
+
+            if len(sql) < 10:
+                raise ValueError("SQL demasiado corto")
+
+            # -------------------------
+            # 4. GUARD FINAL (UNA SOLA VEZ)
+            # -------------------------
+            return sql  # 👈 guard afuera del retry
+
+        except Exception as e:
+
+            last_error = {
+                "type": type(e).__name__,
+                "message": str(e)
+            }
+
+            previous_output = parsed if 'parsed' in locals() else None
+
+            if not should_retry(str(e)):
+                raise
+
+    raise ValueError(f"Failed after retries: {last_error}")
+
+
+
+
+
+
+
+
+
+
+
+steps.py 
+from agents.filters import (
+    is_valid_question_basic,
+    is_question_related_fast,
+    detect_language_fast
+)
+from agents.intent_detector import detect_intent
+from core.observability import log_event
+from agents.sql_retry import generate_sql_with_retry
+from tools.insight_tool import InsightTool
+from agents.sql_guard import guard_sql
+
+
+class IntentStep:
+    name = "intent"
+
+    def __init__(self, llm):
+        self.llm = llm
+
+    def run(self, ctx):
+        intent = detect_intent(ctx.input.question, self.llm)
+        ctx.exec.intent = intent
+
+        log_event(
+            "intent_detected",
+            ctx.trace_id,
+            intent=intent
+        )
+
+
+class ValidateStep:
+    name = "validate"
+
+    def run(self, ctx):
+        q = ctx.input.question
+
+        if not is_valid_question_basic(q):
+            raise ValueError("Pregunta inválida")
+
+        if not is_question_related_fast(q, ctx.input.semantic_layer):
+            print("⚠️ Low confidence question, continuing anyway")
+
+
+class LoadSchemaStep:
+    name = "load_schema"
+
+    def run(self, ctx):
+        schema = ctx.input.connector.get_schema()
+        ctx.exec.schema = schema
+        ctx.exec.columns = schema["column_name"].tolist()
+
+
+class GenerateSQLStep:
+    name = "generate_sql"
+
+    def __init__(self, llm):
+        self.llm = llm
+
+    def run(self, ctx):
+        log_event("question", ctx.trace_id, question=ctx.input.question)
+        ctx.exec.sql = generate_sql_with_retry(
+            ctx.input.question,
+            ctx.exec.schema,
+            ctx.input.semantic_layer,
+            ctx.exec.columns,
+            llm=self.llm,
+            language=ctx.exec.language,
+            intent=ctx.exec.intent 
+        )
+        log_event("sql_generated", ctx.trace_id, sql=ctx.exec.sql)
+
+
+class ExecuteSQLStep:
+    name = "execute_sql"
+
+    def run(self, ctx):
+        safe_sql = guard_sql(ctx.exec.sql, ctx.exec.columns)
+        log_event(
+            "sql_execute",
+            ctx.trace_id,
+            sql=safe_sql
+        )
+        ctx.exec.safe_sql = safe_sql
+        result = ctx.input.connector.execute(safe_sql)
+
+        if result is None or len(result) == 0:
+            raise ValueError("Sin resultados")
+
+        ctx.output.result = result
+        log_event(
+            "sql_result",
+            ctx.trace_id,
+            rows=len(result)
+        )
+
+class InsightStep:
+    name = "insight"
+
+    def __init__(self, llm):
+        self.llm = llm
+
+    def run(self, ctx):
+        try:
+            df = ctx.output.result
+
+            if df is None or len(df) == 0:
+                ctx.output.insight = "No hay datos."
+                return
+
+            if len(df) > 50:
+                ctx.output.insight = "Resultado grande — insight omitido por performance."
+                return
+
+            ctx.output.insight = InsightTool(self.llm).run(
+                ctx.input.question,
+                {
+                    "last_result": df,
+                    "language": ctx.exec.language
+                }
+            )
+
+        except Exception as e:
+            ctx.output.insight = f"Insight error: {str(e)}"
+
+
+class DetectLanguageStep:
+    name = "detect_language"
+
+    def run(self, ctx):
+        ctx.exec.language = detect_language_fast(ctx.input.question)
+        log_event("language_detected", ctx.trace_id, language=ctx.exec.language)
+
+
+
+
+
+
+
+base.py
+class BaseConnector:
+
+    def execute(self, query: str):
+        raise NotImplementedError
+    
+    def get_schema(self):
+        raise NotImplementedError
+
+    def preview(self, limit=10):
+        raise NotImplementedError
+
+
+csv.py
+from core.settings import SQLConfig
+import pandas as pd
+from connectors.base import BaseConnector
+import duckdb
+
+class CSVConnector(BaseConnector):
+
+    def __init__(self, file):
+        self.df = pd.read_csv(file)
+        self.conn = duckdb.connect()
+        self.conn.register("data", self.df)
+
+    def execute(self, query: str):
+        df = self.conn.execute(query).df()
+        return df.head(SQLConfig.MAX_ROWS)
+
+    def get_schema(self):
+        return self.conn.execute("DESCRIBE data").df()
+
+    def preview(self, limit=10):
+        return self.df.head(limit)
+
+factory.py
+from connectors.duckdb import DuckDBConnector
+from connectors.postgres import PostgresConnector
+from connectors.mysql import MySQLConnector
+from connectors.api import APIConnector
+from connectors.excel import ExcelConnector
+from connectors.csv import CSVConnector
+from connectors.googleSheets import GoogleSheetsConnector
+
+
+def create_connector(source_type, config):
+
+    if source_type == "duckdb":
+        return DuckDBConnector(config.get("file"))  # <- usar get para aceptar None
+
+    elif source_type == "postgres":
+        return PostgresConnector(config["uri"])
+
+    elif source_type == "mysql":
+        return MySQLConnector(config["uri"])
+
+    elif source_type == "excel":
+        return ExcelConnector(config["file"])
+
+    elif source_type == "csv":
+        return CSVConnector(config["file"])
+
+    elif source_type == "api":
+        return APIConnector(config["base_url"])
+    
+    elif source_type == "google_sheets":
+        return GoogleSheetsConnector(config["url"])
+
+    else:
+        raise ValueError("Unsupported data source")
+
+
+
+
+
+
+constants.py
+ALLOWED_TABLE = "data"
+
+FORBIDDEN_SQL_NODES = (
+    "DELETE",
+    "UPDATE",
+    "INSERT",
+    "DROP",
+    "CREATE",
+    "ALTER"
+)
+
+
+
+llm_hf.py
+import requests
+import os
+
+HUGGINGFACE_API_KEY = os.getenv("HUGGINGFACE_API_KEY")
+
+API_URL = "https://api-inference.huggingface.co/models/mistralai/Mistral-7B-Instruct-v0.2"
+
+headers = {
+    "Authorization": f"Bearer {HUGGINGFACE_API_KEY}"
+}
+
+def call_hf(prompt: str):
+
+    response = requests.post(
+        API_URL,
+        headers=headers,
+        json={"inputs": prompt},
+        timeout=3
+    )
+
+    if response.status_code != 200:
+        raise Exception("HF error")
+
+    result = response.json()
+
+    return result[0]["generated_text"]
+
+
+
+
+llm_service.py
+from core.observability import log_event
+from core.llm import call_llm
+
+class LLMService:
+    def generate(self, prompt: str, system_prompt: str, trace_id: str = None) -> str:
+
+        if trace_id:
+            log_event(
+                "llm_request",
+                trace_id,
+                prompt=prompt[:500],
+                system_prompt=system_prompt
+            )
+
+        result = call_llm(prompt, system_prompt)
+
+        if trace_id:
+            log_event(
+                "llm_response",
+                trace_id,
+                response=result[:500]
+            )
+
+        return result
+
+
+
+
+llm.py
+import os
+import requests
+from dotenv import load_dotenv
+from core.settings import LLMConfig
+import time
+
+load_dotenv()
+
+API_KEY = os.getenv("GROQ_API_KEY")
+
+API_URL = "https://api.groq.com/openai/v1/chat/completions"
+
+headers = {
+    "Authorization": f"Bearer {API_KEY}",
+    "Content-Type": "application/json"
+}
+
+
+def call_llm(prompt: str, system_prompt: str = "You are a helpful AI") -> str:
+
+    payload = {
+        "model": LLMConfig.MODEL,
+        "messages": [
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": prompt}
+        ],
+        "temperature": LLMConfig.TEMPERATURE
+    }
+
+    start = time.time()
+
+    response = requests.post(
+        API_URL,
+        headers=headers,
+        json=payload,
+        timeout=LLMConfig.TIMEOUT
+    )
+
+    duration = time.time() - start
+    print(f"🔥 LLM RESPONSE TIME: {duration:.2f}s")
+
+    if response.status_code != 200:
+        raise Exception(response.text)
+
+    result = response.json()
+
+    return result["choices"][0]["message"]["content"]
+
+
+
+
+observability.py
+import logging
+import json
+import uuid
+from datetime import datetime
+
+def get_logger():
+    logger = logging.getLogger("ai_data_analyst")
+
+    if not logger.handlers:
+        handler = logging.StreamHandler()
+        formatter = logging.Formatter('%(message)s')
+        handler.setFormatter(formatter)
+        logger.addHandler(handler)
+        logger.setLevel(logging.INFO)
+
+    return logger
+
+
+def log_event(event_type: str, trace_id: str, **kwargs):
+    logger = get_logger()
+
+    payload = {
+        "ts": datetime.utcnow().isoformat(),
+        "trace_id": trace_id,
+        "event": event_type,
+        **kwargs
+    }
+
+    logger.info(json.dumps(payload, default=str))
+
+
+def new_trace_id():
+    return str(uuid.uuid4())
+
+
+
+pipeline.py
+from core.observability import log_event
+import time
+
+class Step:
+    name = "base"
+
+    def run(self, ctx):
+        raise NotImplementedError
+
+
+class Pipeline:
+
+    def __init__(self, steps):
+        self.steps = steps
+
+    def run(self, ctx):
+        for step in self.steps:
+            start = time.time()
+
+            log_event(
+                "step_start",
+                ctx.trace_id,
+                step=step.name
+            )
+
+            try:
+                step.run(ctx)
+
+                duration = time.time() - start
+
+                log_event(
+                    "step_success",
+                    ctx.trace_id,
+                    step=step.name,
+                    duration=duration
+                )
+
+            except Exception as e:
+                duration = time.time() - start
+
+                log_event(
+                    "step_error",
+                    ctx.trace_id,
+                    step=step.name,
+                    duration=duration,
+                    error=str(e)
+                )
+
+                raise
+
+        return ctx
+
+
+
+query_context.py 
+from dataclasses import dataclass, field
+from typing import Any
+import pandas as pd
+
+@dataclass
+class InputContext:
+    question: str
+    connector: Any
+    semantic_layer: dict | None
+    llm: Any
+
+@dataclass
+class ExecutionContext:
+    schema: Any = None
+    columns: list | None = None
+    sql: str | None = None
+    language: str = "en"
+    intent: dict | None = None   # 🔥 NUEVO
+
+@dataclass
+class OutputContext:
+    result: pd.DataFrame | None = None
+    insight: str | None = None
+
+@dataclass
+class QueryContext:
+    input: InputContext
+    exec: ExecutionContext = field(default_factory=ExecutionContext)
+    output: OutputContext = field(default_factory=OutputContext)
+    trace_id: str | None = None
+
+
+
+
+
+
+settings.py
+import os
+from dotenv import load_dotenv
+
+load_dotenv()
+
+class SQLConfig:
+    MAX_ROWS = int(os.getenv("MAX_ROWS", 1000))
+    MAX_JOINS = int(os.getenv("MAX_JOINS", 3))
+
+class LLMConfig:
+    TIMEOUT = int(os.getenv("QUERY_TIMEOUT", 2))
+    MODEL = os.getenv("LLM_MODEL", "llama-3.3-70b-versatile") 
+    TEMPERATURE = float(os.getenv("LLM_TEMPERATURE", 0.2))
+
+
+
+
+
+
+semantic_agent.py
+import json
+import re
+
+
+def extract_json(text: str):
+    match = re.search(r"\{.*\}", text, re.DOTALL)
+    if match:
+        return match.group(0)
+    return "{}"
+
+
+def generate_semantic_suggestions(columns, llm):
+
+    prompt = f"""
+You are a data analyst.
+
+Given these columns:
+{columns}
+
+Generate business-friendly aliases and useful metrics.
+
+Return ONLY valid JSON.
+"""
+
+    raw = llm.generate(prompt, "You are a data analyst")
+
+    # 🔥 DEBUG ACÁ
+    print("RAW LLM:", raw)
+
+    cleaned = extract_json(raw)
+
+    try:
+        return json.loads(cleaned)
+    except:
+        return {"aliases": {}, "metrics": {}}
+
+
+
+semantic_layer.py
+def build_semantic_layer(columns, aliases=None, metrics=None):
+    return {
+        "columns": columns,
+        "aliases": aliases or {},
+        "metrics": metrics or {}
+    }
+
+utils.py
+import json
+import os
+import hashlib
+
+def get_dataset_id(source_type, config):
+    base = f"{source_type}_{str(config)}"
+    return hashlib.md5(base.encode()).hexdigest()
+
+def save_semantic_layer(dataset_id, semantic_layer):
+    os.makedirs("semantic_store", exist_ok=True)
+    path = f"semantic_store/{dataset_id}.json"
+
+    with open(path, "w") as f:
+        json.dump(semantic_layer, f, indent=2)
+
+def load_semantic_layer(dataset_id):
+    path = f"semantic_store/{dataset_id}.json"
+
+    if os.path.exists(path):
+        with open(path) as f:
+            return json.load(f)
+    return None
+
+def list_semantic_files():
+    path = "semantic_store"
+    if not os.path.exists(path):
+        return []
+    return [f for f in os.listdir(path) if f.endswith(".json")]
+
+def load_semantic_file(file_name):
+    path = os.path.join("semantic_store", file_name)
+    with open(path) as f:
+        return json.load(f)
+
+
+
+ui_query.py
+import streamlit as st
+from agents.service import answer_question
+
+
+def render_query_ui():
+
+    st.subheader("💬 Pregunta")
+
+    question = st.text_input("Escribí tu pregunta")
+
+    if st.button("Ejecutar"):
+
+        response = answer_question(
+            question,
+            st.session_state["connector"],
+            st.session_state.get("semantic_layer"),
+            st.session_state["llm"] 
+        )
+
+        # 🔹 ERROR
+        if response.get("type") == "error":
+            st.error(response["message"])
+            return
+
+        # 🔹 DATA
+        if response.get("type") == "table":
+            st.subheader("📊 Resultado")
+            st.dataframe(response["data"])
+
+        # 🔹 INSIGHT
+        if response.get("explanation") is not None:
+            st.subheader("🧠 Insight")
+            st.write(response["explanation"])
+
+
+
+ui_semantic.py
+import streamlit as st
+
+from semantic.semantic_layer import build_semantic_layer, merge_semantic_layers
+from semantic.semantic_agent import generate_semantic_suggestions
+from semantic.utils import (
+    save_semantic_layer,
+    list_semantic_files,
+    load_semantic_file
+)
+
+def render_semantic_ui(connector):
+
+    preview = connector.preview()
+    columns = list(preview.columns)
+
+    st.subheader("🧠 Columnas")
+    st.write(columns)
+
+    st.subheader("📊 Tipos")
+    st.write(preview.dtypes)
+
+    # -------------------------
+    # MULTI SEMANTIC
+    # -------------------------
+
+    st.subheader("🧠 Usar Semantic Layers existentes")
+
+    semantic_files = list_semantic_files()
+
+    if semantic_files:
+
+        col1, col2 = st.columns(2)
+
+        with col1:
+            sem1_name = st.selectbox("Semantic 1", ["None"] + semantic_files)
+
+        with col2:
+            sem2_name = st.selectbox("Semantic 2", ["None"] + semantic_files)
+
+        if st.button("📥 Aplicar Semantic Layers"):
+
+            sem1 = load_semantic_file(sem1_name) if sem1_name != "None" else None
+            sem2 = load_semantic_file(sem2_name) if sem2_name != "None" else None
+
+            merged = merge_semantic_layers(sem1, sem2)
+
+            st.session_state["semantic_layer"] = merged
+
+            st.success("✅ Semantic layers aplicadas")
+            st.json(merged)
+
+    # -------------------------
+    # GENERAR
+    # -------------------------
+
+    st.subheader("✨ Generar nueva semántica")
+
+    if st.button("Generar automáticamente"):
+        raw = generate_semantic_suggestions(columns,st.session_state["llm"])
+
+        st.session_state["semantic_layer"] = build_semantic_layer(
+            columns,
+            raw.get("aliases"),
+            raw.get("metrics")
+        )
+
+        st.success("✅ Generada")
+
+    # -------------------------
+    # EDITAR
+    # -------------------------
+
+    if "semantic_layer" in st.session_state:
+
+        sl = st.session_state["semantic_layer"]
+
+        st.write("### 🔤 Aliases")
+        st.json(sl["aliases"])
+
+        st.write("### 📊 Métricas")
+        st.json(sl["metrics"])
+
+        st.write("### ✏️ Editar Aliases")
+
+        for col in columns:
+            current = sl["aliases"].get(col, [])
+            key_name = f"alias_{col}"
+
+            if key_name not in st.session_state:
+                st.session_state[key_name] = ", ".join(current)
+
+            value = st.text_input(col, key=key_name)
+            sl["aliases"][col] = [v.strip() for v in value.split(",") if v]
+
+        st.write("### ✏️ Editar Métricas")
+
+        for k, v in list(sl["metrics"].items()):
+            key_name = f"metric_{k}"
+
+            if key_name not in st.session_state:
+                st.session_state[key_name] = v
+
+            new_val = st.text_input(k, key=key_name)
+            sl["metrics"][k] = new_val
+
+        # AGREGAR
+        st.write("### ➕ Nueva Métrica")
+
+        new_name = st.text_input("Nombre")
+        new_expr = st.text_input("SQL")
+
+        if st.button("Agregar métrica"):
+            if new_name and new_expr:
+                sl["metrics"][new_name] = new_expr
+                st.success(f"✅ {new_name} agregada")
+
+        # GUARDAR
+        if st.button("💾 Guardar capa semántica"):
+            save_semantic_layer(
+                st.session_state["dataset_id"],
+                sl
+            )
+            st.success("✅ Guardado")
+
+        st.session_state["semantic_layer"] = sl
+
+
+
+ui_source.py
+import streamlit as st
+from connectors.factory import create_connector
+from semantic.utils import get_dataset_id, load_semantic_layer
+
+def render_source_selector():
+    source_type = st.selectbox(
+        "Seleccioná tipo de fuente",
+        ["duckdb", "postgres", "mysql", "excel", "csv", "google_sheets", "api"]
+    )
+
+    config = {}
+
+    if source_type == "duckdb":
+        use_demo = st.checkbox("Usar tabla demo", value=True)
+
+        uploaded_file = None
+        if not use_demo:
+            uploaded_file = st.file_uploader("Subí CSV/Parquet", type=["csv", "parquet"])
+
+        if uploaded_file:
+            config["file"] = uploaded_file
+        elif use_demo:
+            config["file"] = None
+
+    elif source_type in ["postgres", "mysql"]:
+        use_demo = st.checkbox("Usar demo", value=True)
+
+        if use_demo:
+            config["uri"] = None
+        else:
+            default_uri = (
+                "postgresql://user:pass@localhost:5432/db"
+                if source_type == "postgres"
+                else "mysql+pymysql://user:pass@localhost:3306/db"
+            )
+            config["uri"] = st.text_input("Connection String", default_uri)
+
+    elif source_type == "google_sheets":
+        config["url"] = st.text_input("Google Sheet URL")
+
+    elif source_type == "api":
+        config["base_url"] = st.text_input("Base URL", "https://api.example.com")
+
+    elif source_type in ["excel", "csv"]:
+        uploaded_file = st.file_uploader("📂 Subí archivo", type=["csv", "xlsx"])
+
+        if uploaded_file:
+            config["file"] = uploaded_file
+
+    if st.button("🚀 Conectar"):
+        connector = create_connector(source_type, config)
+
+        st.session_state["connector"] = connector
+        dataset_id = get_dataset_id(source_type, config)
+        st.session_state["dataset_id"] = dataset_id
+
+        loaded = load_semantic_layer(dataset_id)
+        if loaded:
+            st.session_state["semantic_layer"] = loaded
+            st.info("📂 Capa semántica cargada")
+
+        st.success("✅ Conectado")
+
+
+
+
+main.py
+import streamlit as st
+from core.llm_service import LLMService
+from ui.ui_source import render_source_selector
+from ui.ui_semantic import render_semantic_ui
+from ui.ui_query import render_query_ui
+
+st.set_page_config(page_title="AI Data Analyst", layout="wide")
+
+if "llm" not in st.session_state:
+    st.session_state["llm"] = LLMService()
+
+st.title("🔥 AI Data Analyst")
+st.write("Conectá tu fuente de datos en segundos")
+
+render_source_selector()
+
+if "connector" in st.session_state:
+
+    connector = st.session_state["connector"]
+
+    st.subheader("📚 Schema")
+    st.dataframe(connector.get_schema())
+
+    st.subheader("👀 Preview")
+    preview = connector.preview()
+    st.dataframe(preview)
+
+    # 👇 SOLO ESTO
+    render_semantic_ui(connector)
+
+    render_query_ui()

@@ -3,10 +3,29 @@ from agents.filters import (
     is_question_related_fast,
     detect_language_fast
 )
+from agents.intent_detector import detect_intent
 from core.observability import log_event
 from agents.sql_retry import generate_sql_with_retry
 from tools.insight_tool import InsightTool
 from agents.sql_guard import guard_sql
+
+
+class IntentStep:
+    name = "intent"
+
+    def __init__(self, llm):
+        self.llm = llm
+
+    def run(self, ctx):
+        intent = detect_intent(ctx.input.question, self.llm)
+        ctx.exec.intent = intent
+
+        log_event(
+            "intent_detected",
+            ctx.trace_id,
+            intent=intent
+        )
+
 
 class ValidateStep:
     name = "validate"
@@ -44,7 +63,8 @@ class GenerateSQLStep:
             ctx.input.semantic_layer,
             ctx.exec.columns,
             llm=self.llm,
-            language=ctx.exec.language
+            language=ctx.exec.language,
+            intent=ctx.exec.intent 
         )
         log_event("sql_generated", ctx.trace_id, sql=ctx.exec.sql)
 
