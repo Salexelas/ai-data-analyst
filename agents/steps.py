@@ -8,6 +8,7 @@ from core.observability import log_event
 from agents.sql_retry import generate_sql_with_retry
 from tools.insight_tool import InsightTool
 from agents.sql_guard import guard_sql
+from tools.insight_prompt_builder import build_insight_prompt
 
 
 class IntentStep:
@@ -102,6 +103,9 @@ class InsightStep:
         try:
             df = ctx.output.result
 
+            # -------------------------
+            # GUARDS
+            # -------------------------
             if df is None or len(df) == 0:
                 ctx.output.insight = "No hay datos."
                 return
@@ -110,13 +114,65 @@ class InsightStep:
                 ctx.output.insight = "Resultado grande — insight omitido por performance."
                 return
 
-            ctx.output.insight = InsightTool(self.llm).run(
+            # -------------------------
+            # DATA PREP (🔥 clave)
+            # -------------------------
+            df = df.round(2)
+
+            preview = df.head(10).to_dict(orient="records")
+
+            data = {
+                "rows": preview,
+                "intent": ctx.exec.intent.get("intent") if ctx.exec.intent else None
+            }
+
+            # -------------------------
+            # 1. GENERATE
+            # -------------------------
+            prompt = build_insight_prompt(
                 ctx.input.question,
-                {
-                    "last_result": df,
-                    "language": ctx.exec.language
-                }
+                data,
+                ctx.exec.language
             )
+
+            raw_insight = self.llm.generate(
+                prompt,
+                system_prompt="You are a precise data analyst"
+            )
+
+            # -------------------------
+            # 2. SELF-CHECK (🔥 FIX REAL)
+            # -------------------------
+            check_prompt = f"""
+You are a senior data analyst.
+
+Rewrite the following analysis so that:
+
+- ALL numeric comparisons are correct
+- NO contradictions exist
+- The result is a CLEAN INSIGHT (not a validation report)
+
+STRICT RULES:
+- Do NOT explain errors
+- Do NOT mention validation
+- Do NOT list checks
+- ONLY output the final insight
+- Keep it concise and readable
+- Focus on key differences and relevant comparisons
+
+DATA:
+{data}
+
+TEXT:
+{raw_insight}
+"""
+
+            final_insight = self.llm.generate(
+                check_prompt,
+                system_prompt="You validate and rewrite analytical insights"
+            )
+
+            ctx.output.insight = final_insight.strip()
 
         except Exception as e:
             ctx.output.insight = f"Insight error: {str(e)}"
