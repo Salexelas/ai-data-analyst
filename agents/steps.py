@@ -18,7 +18,7 @@ class IntentStep:
         self.llm = llm
 
     def run(self, ctx):
-        intent = detect_intent(ctx.input.question, self.llm)
+        intent = detect_intent(ctx.input.question, self.llm, ctx.input.semantic_layer)
         ctx.exec.intent = intent
 
         log_event(

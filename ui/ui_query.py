@@ -13,6 +13,7 @@ def render_query_ui():
         response = answer_question(
             question,
             st.session_state["connector"],
+            st.session_state.get("dataset_id"),
             st.session_state.get("semantic_layer"),
             st.session_state["llm"] 
         )

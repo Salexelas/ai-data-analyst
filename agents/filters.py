@@ -1,6 +1,24 @@
 import unicodedata
 import re
 
+def normalize_query_for_intent(text: str):
+    text = normalize(text)  # ya tenés esto
+
+    replacements = {
+        "más": "mas",
+        "top": "top",
+        "mayores": "top",
+        "mejores": "top",
+        "peores": "bottom",
+        "menos": "bottom"
+    }
+
+    tokens = text.split()
+    tokens = [replacements.get(t, t) for t in tokens]
+
+    return " ".join(tokens)
+
+
 def fuzzy_match_score(q, term):
     q_tokens = set(q.split())
     t_tokens = set(term.split())
