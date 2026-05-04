@@ -8,12 +8,16 @@ from ui.pages.semantic import render_semantic
 from ui.pages.data import render_data
 from ui.pages.ranking import render_ranking
 from ui.pages.recents import render_recents
+from core.llm_service import LLMService
 
 st.set_page_config(layout="wide")
 
 # =========================
 # 🔹 STATE GLOBAL
 # =========================
+if "llm" not in st.session_state:
+    st.session_state["llm"] = LLMService()
+
 if "page" not in st.session_state:
     st.session_state.page = "chat"
 

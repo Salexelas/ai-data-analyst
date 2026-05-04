@@ -1,4 +1,5 @@
 import streamlit as st
+from agents.service import answer_question
 
 def render_chat():
 
@@ -23,47 +24,66 @@ def render_chat():
         with col1:
             if st.button("Ejecutar"):
 
-                # 🔥 GUARDAR EN RECENTS
-                if question:
-                    if question not in st.session_state.recent_queries:
-                        st.session_state.recent_queries.insert(0, question)
+                if "connector" not in st.session_state:
+                    st.error("Primero cargá un dataset")
+                    return
 
-                st.success("Ejecutado (UI mock)")
+                if question:
+                    st.session_state.setdefault("recent_queries", [])
+
+                    if question not in st.session_state["recent_queries"]:
+                        st.session_state["recent_queries"].insert(0, question)
+
+                # 🔥 FIX REAL ACÁ
+                response = answer_question(
+                    question=question,
+                    connector=st.session_state["connector"],
+                    dataset_id=st.session_state.get("dataset_id"),
+                    semantic_layer=st.session_state.get("semantic_layer"),
+                    llm=st.session_state["llm"]
+                )
+
+                st.session_state["last_response"] = response
 
         with col2:
             if st.button("Limpiar"):
-                st.session_state.prefill_question = ""
+                st.session_state["prefill_question"] = ""
+                st.session_state.pop("last_response", None)
 
         st.markdown("---")
 
-        st.subheader("📊 Resultado")
-        st.info("Acá se muestra la tabla")
+        # =========================
+        # RESULTADO
+        # =========================
 
-        st.subheader("🧠 Insight")
-        st.info("Acá se muestra el análisis")
+        response = st.session_state.get("last_response")
+
+        if response:
+
+            if response.get("type") == "error":
+                st.error(response["message"])
+
+            elif response.get("type") == "table":
+
+                st.subheader("📊 Resultado")
+                st.dataframe(response["data"])
+
+                if response.get("explanation"):
+                    st.subheader("🧠 Insight")
+                    st.write(response["explanation"])
+
+        else:
+            st.info("Todavía no ejecutaste ninguna consulta")
 
     # =========================
-    # TAB COMPARACIÓN
+    # TABS FUTUROS
     # =========================
     with tabs[1]:
         st.markdown("### 🔀 Comparar datasets")
+        st.info("Próximamente 🚧")
 
-        col1, col2 = st.columns(2)
-
-        with col1:
-            st.selectbox("Tabla A", ["ventas", "clientes"])
-
-        with col2:
-            st.selectbox("Tabla B", ["ventas", "clientes"])
-
-        st.button("Comparar")
-
-    # =========================
-    # TAB VISTA
-    # =========================
     with tabs[2]:
         st.markdown("### 📈 Opciones de vista")
-
         st.checkbox("Modo compacto")
         st.checkbox("Mostrar insight")
         st.checkbox("Mostrar SQL")
