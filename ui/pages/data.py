@@ -1,6 +1,12 @@
 import streamlit as st
+import os
 from connectors.factory import create_connector
 from semantic.utils import get_dataset_id, load_semantic_layer
+
+# 📁 carpeta persistente
+DATA_PATH = "data"
+os.makedirs(DATA_PATH, exist_ok=True)
+
 
 def render_data():
 
@@ -21,12 +27,19 @@ def render_data():
 
         if file and st.button("Cargar archivo"):
 
-            # detectar tipo simple
+            file_path = os.path.join(DATA_PATH, file.name)
+
+            # 💾 guardar archivo en disco
+            with open(file_path, "wb") as f:
+                f.write(file.getbuffer())
+
             file_type = "csv" if file.name.endswith(".csv") else "excel"
 
-            connector = create_connector(file_type, {"file": file})
+            # ⚠️ ahora usamos file_path (persistente)
+            connector = create_connector(file_type, {"file_path": file_path})
 
             st.session_state["connector"] = connector
+            st.session_state["file_path"] = file_path
 
             dataset_id = get_dataset_id(file_type, {"file": file.name})
             st.session_state["dataset_id"] = dataset_id
@@ -35,7 +48,7 @@ def render_data():
             if loaded:
                 st.session_state["semantic_layer"] = loaded
 
-            st.success("✅ Dataset cargado")
+            st.success(f"✅ Dataset guardado en {file_path}")
 
     # -------------------------
     # 🔗 CONNECT (DB / API)

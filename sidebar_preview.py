@@ -5,6 +5,13 @@ st.set_page_config(layout="wide")
 with st.sidebar:
     st.title("📊 App Data IA Analisis")
 
+     # 🔥 DATASET ACTIVO (SIEMPRE VISIBLE)
+    if "file_path" in st.session_state:
+        import os
+        st.success(f"📊 Dataset:\n{os.path.basename(st.session_state['file_path'])}")
+    else:
+        st.warning("No hay dataset activo")
+        
     st.button("🆕 Nueva conversación", key="chat_new")
 
     st.markdown("---")
@@ -17,6 +24,9 @@ with st.sidebar:
         st.button("Editar fuentes", key="semantic_sources")
         st.button("Editar métricas", key="semantic_metrics")
         st.button("Aliases", key="semantic_alias")
+
+    with st.expander("📚 Datasets"):
+        st.button("Ver / Gestionar", key="datasets_manage")
 
     with st.expander("📊 Gráficos"):
         st.button("Línea", key="chart_line")
