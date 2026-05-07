@@ -1,0 +1,37 @@
+[
+  {
+    "question": "cuantos juegos jugo San antonio Spurs?",
+    "dataset": "nbaStats - Hoja 1.csv",
+    "intent": null,
+    "ts": 1778116562.1369562,
+    "response": null
+  },
+  {
+    "question": "5 equipos con mais puntos",
+    "dataset": null,
+    "intent": null,
+    "ts": 1778108224.4423115,
+    "response": null
+  },
+  {
+    "question": "5 equipos con mas puntos",
+    "dataset": null,
+    "intent": null,
+    "ts": 1778108209.3133664,
+    "response": null
+  },
+  {
+    "question": "5equipos con mas puntos",
+    "dataset": null,
+    "intent": null,
+    "ts": 1778108176.0094848,
+    "response": null
+  },
+  {
+    "question": "4 equipos con mas puntos",
+    "dataset": null,
+    "intent": null,
+    "ts": 1778107986.3838143,
+    "response": null
+  }
+]

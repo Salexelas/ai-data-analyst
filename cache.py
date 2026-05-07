@@ -14,7 +14,6 @@ class SimpleCache:
         if not item:
             return None
 
-        # expiración
         if time.time() - item["ts"] > self.ttl:
             del self.store[key]
             return None
@@ -28,10 +27,9 @@ class SimpleCache:
         }
 
 
-# 🔥 KEY BUILDER (CLAVE REAL)
 def build_cache_key(question, dataset_id, semantic_layer, intent, language):
     base = {
-        #"q": question,
+        "q": question,  # 🔥 IMPORTANTE: ahora sí incluimos la query
         "dataset": dataset_id,
         "semantic": semantic_layer,
         "intent": intent,

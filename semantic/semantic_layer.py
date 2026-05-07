@@ -72,10 +72,16 @@ def merge_semantic_layers(base_layer, extra_layer):
     merged["aliases"] = base_layer.get("aliases", {}).copy()
 
     for col, values in extra_layer.get("aliases", {}).items():
-        if col in merged["aliases"]:
-            merged["aliases"][col] = list(set(merged["aliases"][col] + values))
-        else:
-            merged["aliases"][col] = values
+
+        existing = merged["aliases"].get(col, [])
+
+        if isinstance(existing, str):
+            existing = [existing]
+
+        if isinstance(values, str):
+            values = [values]
+
+        merged["aliases"][col] = list(set(existing + values))
 
     # -------------------------
     # MERGE METRICS

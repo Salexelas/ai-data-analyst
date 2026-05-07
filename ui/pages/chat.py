@@ -1,5 +1,6 @@
 import streamlit as st
 from agents.service import answer_question
+from core.query_store import save_query
 
 def render_chat():
 
@@ -34,7 +35,13 @@ def render_chat():
                     if question not in st.session_state["recent_queries"]:
                         st.session_state["recent_queries"].insert(0, question)
 
-                # 🔥 FIX REAL ACÁ
+                    # 🔥 GUARDADO REAL (LO QUE FALTABA)
+                    save_query(
+                        question,
+                        dataset_id=st.session_state.get("dataset_id"),
+                        intent=None
+                    )
+
                 response = answer_question(
                     question=question,
                     connector=st.session_state["connector"],

@@ -9,55 +9,101 @@ from ui.pages.semantic import render_semantic
 from ui.pages.data import render_data
 from ui.pages.ranking import render_ranking
 from ui.pages.recents import render_recents
-from core.llm_service import LLMService
-from connectors.factory import create_connector
 from ui.pages.datasets import render_datasets
 
+from core.llm_service import LLMService
+from connectors.factory import create_connector
+
+# =========================
+# 🔹 CONFIG
+# =========================
 st.set_page_config(layout="wide")
 
 DATA_PATH = "data"
 
 # =========================
-# 🔹 STATE GLOBAL
+# 🔹 SESSION STATE
 # =========================
-if "llm" not in st.session_state:
-    st.session_state["llm"] = LLMService()
-
-if "page" not in st.session_state:
-    st.session_state.page = "chat"
-
-if "recent_queries" not in st.session_state:
-    st.session_state.recent_queries = [
+DEFAULT_STATE = {
+    "llm": None,
+    "page": "chat",
+    "connector": None,
+    "dataset_id": None,
+    "file_path": None,
+    "semantic_layer": None,
+    "recent_queries": [
         "ventas por producto",
         "top clientes",
         "forecast ventas"
     ]
+}
+
+for key, value in DEFAULT_STATE.items():
+
+    if key not in st.session_state:
+        st.session_state[key] = value
+
+# =========================
+# 🔹 LLM INIT
+# =========================
+if st.session_state["llm"] is None:
+    st.session_state["llm"] = LLMService()
 
 # =========================
 # 🔥 AUTOLOAD DATASET
 # =========================
-if "connector" not in st.session_state:
+if st.session_state["connector"] is None:
 
     if os.path.exists(DATA_PATH):
 
         files = sorted(os.listdir(DATA_PATH), reverse=True)
 
         if files:
+
             last_file = files[0]
-            file_path = os.path.join(DATA_PATH, last_file)
 
-            file_type = "csv" if last_file.endswith(".csv") else "excel"
+            file_path = os.path.join(
+                DATA_PATH,
+                last_file
+            )
 
-            try:
-                connector = create_connector(file_type, {"file_path": file_path})
+            # -------------------------
+            # Detect file type
+            # -------------------------
+            if last_file.endswith(".csv"):
+                file_type = "csv"
 
-                st.session_state["connector"] = connector
-                st.session_state["file_path"] = file_path
+            elif last_file.endswith(".xlsx"):
+                file_type = "excel"
 
-                st.toast(f"📂 Dataset cargado automáticamente: {last_file}")
+            else:
+                file_type = None
 
-            except Exception as e:
-                st.warning(f"No se pudo cargar dataset: {e}")
+            # -------------------------
+            # Load dataset
+            # -------------------------
+            if file_type:
+
+                try:
+
+                    connector = create_connector(
+                        file_type,
+                        {"file_path": file_path}
+                    )
+
+                    st.session_state["connector"] = connector
+                    st.session_state["file_path"] = file_path
+                    st.session_state["dataset_id"] = last_file
+
+                    st.toast(
+                        f"📂 Dataset cargado automáticamente: {last_file}"
+                    )
+
+                except Exception as e:
+
+                    st.warning(
+                        f"No se pudo cargar dataset: {e}"
+                    )
 
 # =========================
 # 🔹 SIDEBAR
@@ -65,7 +111,7 @@ if "connector" not in st.session_state:
 render_sidebar()
 
 # =========================
-# 🔥 ROUTER
+# 🔥 ROUTES
 # =========================
 ROUTES = {
     "chat": render_chat,
@@ -82,4 +128,6 @@ ROUTES = {
 # =========================
 # ▶️ EXECUTE PAGE
 # =========================
-ROUTES.get(st.session_state.page, render_chat)()
+page = st.session_state.get("page", "chat")
+
+ROUTES.get(page, render_chat)()
