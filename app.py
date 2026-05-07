@@ -10,6 +10,7 @@ from ui.pages.data import render_data
 from ui.pages.ranking import render_ranking
 from ui.pages.recents import render_recents
 from ui.pages.datasets import render_datasets
+from ui.pages.dataset_editor import render_dataset_editor
 
 from core.llm_service import LLMService
 from connectors.factory import create_connector
@@ -121,6 +122,7 @@ ROUTES = {
     "data_create": render_data,
     "data_external": render_data,
     "datasets_manage": render_datasets,
+    "dataset_editor": render_dataset_editor,
     "ranking": render_ranking,
     "recents": render_recents
 }

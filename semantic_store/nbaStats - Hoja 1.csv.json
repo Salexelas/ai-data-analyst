@@ -27,18 +27,12 @@
     "BLKA",
     "PF",
     "PFD",
-    "#ERROR!"
+    "net_margin"
   ],
   "aliases": {
     "Unnamed: 0": [],
-    "Team": [
-      "equipos"
-    ],
-    "GP": [
-      "juegos jugados",
-      "partidos jugados",
-      "games played"
-    ],
+    "Team": [],
+    "GP": [],
     "W": [],
     "L": [],
     "WIN%": [],
@@ -63,22 +57,9 @@
     "BLKA": [],
     "PF": [],
     "PFD": [],
-    "#ERROR!": [],
-    "Orden": [],
-    "Juego": [],
-    "TipoInflable": [],
-    "Cliente": [],
-    "Recibida": [],
-    "Via": [],
-    "Unnamed: 6": [],
-    "Provincia": [],
-    "Localidad": [],
-    "DireccionMapa": [],
-    "N\u00famero serie asignado": [],
-    "Control": [],
-    "Estado": [],
-    "Entregado": [],
-    "Comentarios": []
+    "net_margin": [
+      "plus minus"
+    ]
   },
   "metrics": {}
 }

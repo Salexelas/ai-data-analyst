@@ -1,5 +1,103 @@
 [
   {
+    "question": "tipo de producto mas vendido",
+    "dataset": "EO.csv",
+    "intent": null,
+    "ts": 1778118611.8548853,
+    "response": null
+  },
+  {
+    "question": "cual es el tipo de prodcuto mas vendido?",
+    "dataset": "EO.csv",
+    "intent": null,
+    "ts": 1778118565.5357969,
+    "response": null
+  },
+  {
+    "question": "cual es el tipo de producto mas vendido",
+    "dataset": "EO.csv",
+    "intent": null,
+    "ts": 1778118526.2327826,
+    "response": null
+  },
+  {
+    "question": "cual es el tipo de producto mas vendido?",
+    "dataset": "EO.csv",
+    "intent": null,
+    "ts": 1778118520.6694796,
+    "response": null
+  },
+  {
+    "question": "cuales son los 3 tipos de juegos mas vendidos",
+    "dataset": "EO.csv",
+    "intent": null,
+    "ts": 1778118423.1719577,
+    "response": null
+  },
+  {
+    "question": "cuales son los tipos de juegos mas vendidos, dame el contador",
+    "dataset": "EO.csv",
+    "intent": null,
+    "ts": 1778118399.8279135,
+    "response": null
+  },
+  {
+    "question": "cuales son los tipos de juegos mas vendidos",
+    "dataset": "EO.csv",
+    "intent": null,
+    "ts": 1778118384.7499588,
+    "response": null
+  },
+  {
+    "question": "cuales son los tipos de juegos que mas se vendieron ",
+    "dataset": "EO.csv",
+    "intent": null,
+    "ts": 1778118369.0557284,
+    "response": null
+  },
+  {
+    "question": "que tipo de juegos se vendieron mas",
+    "dataset": "EO.csv",
+    "intent": null,
+    "ts": 1778118333.9624493,
+    "response": null
+  },
+  {
+    "question": "que tipos de jeugos se vendieron mas",
+    "dataset": "EO.csv",
+    "intent": null,
+    "ts": 1778118299.5766394,
+    "response": null
+  },
+  {
+    "question": "cuantos productos se vendieron en total?",
+    "dataset": "EO.csv",
+    "intent": null,
+    "ts": 1778118245.5446393,
+    "response": null
+  },
+  {
+    "question": "por que via se vendieron mas AT301",
+    "dataset": "EO.csv",
+    "intent": null,
+    "ts": 1778118131.418304,
+    "response": null
+  },
+  {
+    "question": "cuantos at301 se vendieron?",
+    "dataset": "EO.csv",
+    "intent": null,
+    "ts": 1778117996.004867,
+    "response": null
+  },
+  {
+    "question": "cuales son los 5 equipos que tienen el mejor plus minus",
+    "dataset": "nbaStats - Hoja 1.csv",
+    "intent": null,
+    "ts": 1778117879.1904364,
+    "response": null
+  },
+  {
     "question": "cuantos juegos jugo San antonio Spurs?",
     "dataset": "nbaStats - Hoja 1.csv",
     "intent": null,
