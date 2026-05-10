@@ -1,5 +1,26 @@
 [
   {
+    "question": "I would like to know what is the teen with more rebounds.",
+    "dataset": "nbaStats - Hoja 1.csv",
+    "intent": null,
+    "ts": 1778279872.3597271,
+    "response": null
+  },
+  {
+    "question": "3 equipos cn mas puntos",
+    "dataset": "nbaStats - Hoja 1.csv",
+    "intent": null,
+    "ts": 1778279854.3698034,
+    "response": null
+  },
+  {
+    "question": "5 equipos con más puntos",
+    "dataset": "nbaStats - Hoja 1.csv",
+    "intent": null,
+    "ts": 1778279655.1421795,
+    "response": null
+  },
+  {
     "question": "tipo de producto mas vendido",
     "dataset": "EO.csv",
     "intent": null,

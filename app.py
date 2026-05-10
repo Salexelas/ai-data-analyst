@@ -1,6 +1,6 @@
 import streamlit as st
 import os
-
+from services.speech.whisper_service import WhisperService
 from ui.components.sidebar import render_sidebar
 from ui.pages.chat import render_chat
 from ui.pages.ml import render_ml
@@ -49,6 +49,18 @@ for key, value in DEFAULT_STATE.items():
 # =========================
 if st.session_state["llm"] is None:
     st.session_state["llm"] = LLMService()
+
+# =========================
+# 🔥 WHISPER INIT
+# =========================
+
+@st.cache_resource
+def get_whisper():
+    return WhisperService()
+
+
+if "whisper" not in st.session_state:
+    st.session_state["whisper"] = get_whisper()
 
 # =========================
 # 🔥 AUTOLOAD DATASET

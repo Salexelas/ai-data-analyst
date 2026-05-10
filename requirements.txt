@@ -17,3 +17,9 @@ radon
 pylint
 sqlglot
 plotly
+faster-whisper
+streamlit-mic-recorder
+ctranslate2
+av
+torchvision
+slack-bolt
