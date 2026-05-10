@@ -14,3 +14,11 @@ history/
 feedback/
 
 *.log
+
+*.exe
+*.bin
+*.pt
+*.pth
+*.onnx
+*.ckpt
+models/
