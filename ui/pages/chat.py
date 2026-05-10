@@ -7,6 +7,11 @@ from ui.components.audio_input import (
     render_audio_input
 )
 
+# 🔥 NUEVO
+from renderers.streamlit_renderer import (
+    render_analytics
+)
+
 
 def render_chat():
 
@@ -39,31 +44,34 @@ def render_chat():
         # =========================
         # 🔹 AUDIO
         # =========================
-
         audio = render_audio_input()
 
-        # 🔥 INIT
+        # =========================
+        # INIT
+        # =========================
         if "audio_prompt" not in st.session_state:
+
             st.session_state["audio_prompt"] = ""
 
-        # 🔥 TRANSCRIBE
+        # =========================
+        # TRANSCRIBE
+        # =========================
         if audio and "bytes" in audio:
 
             with st.spinner("🎧 Transcribiendo..."):
 
                 transcription = (
                     st.session_state["whisper"]
-                    .transcribe(
-                        audio["bytes"]
-                    )
+                    .transcribe(audio["bytes"])
                 )
 
-            # 🔥 SAVE PERSISTENT
             st.session_state[
                 "audio_prompt"
             ] = transcription
 
-        # 🔥 SHOW
+        # =========================
+        # SHOW AUDIO
+        # =========================
         if st.session_state["audio_prompt"]:
 
             st.info(
@@ -71,28 +79,27 @@ def render_chat():
             )
 
         # =========================
-        # 🔥 INPUT FINAL
+        # FINAL QUESTION
         # =========================
-
         question = (
             text_prompt
             or st.session_state["audio_prompt"]
         )
 
         # =========================
-        # 🔹 BOTONES
+        # BUTTONS
         # =========================
         col1, col2 = st.columns([1, 1])
 
         # =========================
-        # ▶️ EJECUTAR
+        # EXECUTE
         # =========================
         with col1:
 
             if st.button("Ejecutar"):
 
                 # -------------------------
-                # VALIDACIÓN DATASET
+                # DATASET VALIDATION
                 # -------------------------
                 if "connector" not in st.session_state:
 
@@ -103,7 +110,7 @@ def render_chat():
                     return
 
                 # -------------------------
-                # VALIDACIÓN INPUT
+                # QUESTION VALIDATION
                 # -------------------------
                 if not question:
 
@@ -147,13 +154,14 @@ def render_chat():
                 )
 
                 # -------------------------
-                # 🚀 PIPELINE
+                # PIPELINE
                 # -------------------------
                 with st.spinner(
-                    "Pensando..."
+                    "🧠 Analizando..."
                 ):
 
                     response = answer_question(
+
                         question=question,
 
                         connector=st.session_state[
@@ -178,7 +186,7 @@ def render_chat():
                 ] = response
 
         # =========================
-        # 🧹 LIMPIAR
+        # CLEAR
         # =========================
         with col2:
 
@@ -190,7 +198,7 @@ def render_chat():
 
                 st.session_state[
                     "audio_prompt"
-                ] 
+                ] = ""
 
                 st.session_state.pop(
                     "last_response",
@@ -200,7 +208,7 @@ def render_chat():
         st.markdown("---")
 
         # =========================
-        # 📊 RESULTADO
+        # RESULT
         # =========================
         response = st.session_state.get(
             "last_response"
@@ -211,41 +219,18 @@ def render_chat():
             # -------------------------
             # ERROR
             # -------------------------
-            if response.get("type") == "error":
+            if response.type == "error":
 
                 st.error(
-                    response["message"]
+                    response.message
                 )
 
             # -------------------------
-            # TABLE
+            # ANALYTICS RESPONSE
             # -------------------------
-            elif response.get("type") == "table":
+            else:
 
-                st.subheader(
-                    "📊 Resultado"
-                )
-
-                st.dataframe(
-                    response["data"]
-                )
-
-                # -------------------------
-                # INSIGHT
-                # -------------------------
-                if response.get(
-                    "explanation"
-                ):
-
-                    st.subheader(
-                        "🧠 Insight"
-                    )
-
-                    st.write(
-                        response[
-                            "explanation"
-                        ]
-                    )
+                render_analytics(response)
 
         else:
 
@@ -254,7 +239,7 @@ def render_chat():
             )
 
     # =========================
-    # 🔀 TAB COMPARACIÓN
+    # TAB COMPARACIÓN
     # =========================
     with tabs[1]:
 
@@ -267,7 +252,7 @@ def render_chat():
         )
 
     # =========================
-    # 📈 TAB VISTA
+    # TAB VISTA
     # =========================
     with tabs[2]:
 

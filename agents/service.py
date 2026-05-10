@@ -2,6 +2,8 @@ from core.query_context import QueryContext, InputContext
 from core.pipeline import Pipeline
 from agents.steps import *
 from core.observability import new_trace_id, log_event
+from core.responses import AnalyticsResponse
+
 
 # 🔥 NUEVO
 from cache import SimpleCache, build_cache_key
@@ -75,12 +77,23 @@ def answer_question(question, connector, dataset_id=None, semantic_layer=None, l
         )
 
         # ⚠️ IMPORTANTE → copiar DF
-        response = {
-            "type": "table",
-            "data": ctx.output.result.copy(),
-            "explanation": ctx.output.insight,
-            "language": ctx.exec.language
-        }
+        response = AnalyticsResponse(
+            type="analytics",
+
+            markdown=ctx.output.markdown,
+
+            data=ctx.output.result.copy(),
+
+            sql=ctx.exec.safe_sql,
+
+            chart_type=ctx.output.chart_type,
+
+            language=ctx.exec.language,
+
+            metrics=ctx.output.metrics,
+
+            severity=ctx.output.severity
+        )
 
         # -------------------------
         # 🔥 GUARDAR CACHE

@@ -9,6 +9,7 @@ from agents.sql_retry import generate_sql_with_retry
 from tools.insight_tool import InsightTool
 from agents.sql_guard import guard_sql
 from tools.insight_prompt_builder import build_insight_prompt
+from tools.analytics_response_parser import parse_analytics_response
 
 
 class IntentStep:
@@ -94,28 +95,53 @@ class ExecuteSQLStep:
         )
 
 class InsightStep:
+
     name = "insight"
 
     def __init__(self, llm):
         self.llm = llm
 
     def run(self, ctx):
+
         try:
+
             df = ctx.output.result
 
             # -------------------------
             # GUARDS
             # -------------------------
             if df is None or len(df) == 0:
-                ctx.output.insight = "No hay datos."
-                return
 
-            if len(df) > 50:
-                ctx.output.insight = "Resultado grande — insight omitido por performance."
+                ctx.output.markdown = "# ⚠️ Sin datos"
+
+                ctx.output.metrics = {}
+
+                ctx.output.chart_type = None
+
+                ctx.output.severity = "warning"
+
                 return
 
             # -------------------------
-            # DATA PREP (🔥 clave)
+            # LIMIT
+            # -------------------------
+            if len(df) > 50:
+
+                ctx.output.markdown = (
+                    "# ⚠️ Resultado muy grande\n\n"
+                    "El resultado contiene demasiadas filas para generar insights automáticos."
+                )
+
+                ctx.output.metrics = {}
+
+                ctx.output.chart_type = None
+
+                ctx.output.severity = "warning"
+
+                return
+
+            # -------------------------
+            # DATA PREP
             # -------------------------
             df = df.round(2)
 
@@ -123,11 +149,12 @@ class InsightStep:
 
             data = {
                 "rows": preview,
-                "intent": ctx.exec.intent.get("intent") if ctx.exec.intent else None
+                "intent": ctx.exec.intent.get("intent")
+                if ctx.exec.intent else None
             }
 
             # -------------------------
-            # 1. GENERATE
+            # PROMPT
             # -------------------------
             prompt = build_insight_prompt(
                 ctx.input.question,
@@ -135,47 +162,72 @@ class InsightStep:
                 ctx.exec.language
             )
 
-            raw_insight = self.llm.generate(
+            # -------------------------
+            # GENERATE
+            # -------------------------
+            raw_response = self.llm.generate(
                 prompt,
-                system_prompt="You are a precise data analyst"
-            )
+                system_prompt="""
+You are a senior BI analyst.
 
-            # -------------------------
-            # 2. SELF-CHECK (🔥 FIX REAL)
-            # -------------------------
-            check_prompt = f"""
-You are a senior data analyst.
+Return ONLY valid JSON.
 
-Rewrite the following analysis so that:
+FORMAT:
 
-- ALL numeric comparisons are correct
-- NO contradictions exist
-- The result is a CLEAN INSIGHT (not a validation report)
+{
+    "markdown": "...",
+    "chart_type": "...",
+    "severity": "...",
+    "metrics": {
+        "kpi_1": "...",
+        "kpi_2": "..."
+    }
+}
 
-STRICT RULES:
-- Do NOT explain errors
-- Do NOT mention validation
-- Do NOT list checks
-- ONLY output the final insight
-- Keep it concise and readable
-- Focus on key differences and relevant comparisons
-
-DATA:
-{data}
-
-TEXT:
-{raw_insight}
+RULES:
+- markdown must be executive style
+- use headings
+- use bullets
+- use emojis
+- concise
+- no HTML
 """
-
-            final_insight = self.llm.generate(
-                check_prompt,
-                system_prompt="You validate and rewrite analytical insights"
             )
 
-            ctx.output.insight = final_insight.strip()
+            # -------------------------
+            # PARSE
+            # -------------------------
+            parsed = parse_analytics_response(raw_response)
+
+            # -------------------------
+            # OUTPUT
+            # -------------------------
+            ctx.output.markdown = parsed.get("markdown")
+
+            ctx.output.chart_type = parsed.get("chart_type")
+
+            ctx.output.metrics = parsed.get("metrics", {})
+
+            ctx.output.severity = parsed.get("severity", "info")
+
+            log_event(
+                "insight_generated",
+                ctx.trace_id,
+                chart_type=ctx.output.chart_type,
+                severity=ctx.output.severity
+            )
 
         except Exception as e:
-            ctx.output.insight = f"Insight error: {str(e)}"
+
+            ctx.output.markdown = (
+                f"# ❌ Insight Error\n\n{str(e)}"
+            )
+
+            ctx.output.metrics = {}
+
+            ctx.output.chart_type = None
+
+            ctx.output.severity = "error"
 
 
 class DetectLanguageStep:

@@ -1,6 +1,8 @@
 import streamlit as st
 from agents.service import answer_question
 from core.query_store import save_query
+from renderers.streamlit_renderer import render_analytics
+
 
 def render_query_ui():
 
@@ -42,4 +44,4 @@ def render_query_ui():
         # 🔹 INSIGHT
         if response.get("explanation") is not None:
             st.subheader("🧠 Insight")
-            st.write(response["explanation"])
+            render_analytics(response)

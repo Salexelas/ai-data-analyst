@@ -1,5 +1,26 @@
 [
   {
+    "question": "5 equipos con mas puntso, rebotes y asistencias",
+    "dataset": "nbaStats - Hoja 1.csv",
+    "intent": null,
+    "ts": 1778454647.0652196,
+    "response": null
+  },
+  {
+    "question": "5 equipos con mas puntso",
+    "dataset": "nbaStats - Hoja 1.csv",
+    "intent": null,
+    "ts": 1778454599.3037653,
+    "response": null
+  },
+  {
+    "question": "5 equipos con mas puntos",
+    "dataset": "nbaStats - Hoja 1.csv",
+    "intent": null,
+    "ts": 1778454281.9097636,
+    "response": null
+  },
+  {
     "question": "I would like to know what is the teen with more rebounds.",
     "dataset": "nbaStats - Hoja 1.csv",
     "intent": null,
@@ -130,13 +151,6 @@
     "dataset": null,
     "intent": null,
     "ts": 1778108224.4423115,
-    "response": null
-  },
-  {
-    "question": "5 equipos con mas puntos",
-    "dataset": null,
-    "intent": null,
-    "ts": 1778108209.3133664,
     "response": null
   },
   {
