@@ -1,5 +1,103 @@
 [
   {
+    "question": "cuales son los 3 equipos con el promedio de edad mas bajo",
+    "dataset": "players.csv",
+    "intent": null,
+    "ts": 1778464525.9620044,
+    "response": null
+  },
+  {
+    "question": "cual es el promedio de los los 3 equipos que tienen el promedio de edad mas alto",
+    "dataset": "players.csv",
+    "intent": null,
+    "ts": 1778464501.13263,
+    "response": null
+  },
+  {
+    "question": "cuales son los 3 equipos que tienen el promedio de edad mas alto, y cual es el promedio",
+    "dataset": "players.csv",
+    "intent": null,
+    "ts": 1778464465.3041086,
+    "response": null
+  },
+  {
+    "question": "cuales son los 3 equipos que tienen el promedio de edad mas alto",
+    "dataset": "players.csv",
+    "intent": null,
+    "ts": 1778464450.758978,
+    "response": null
+  },
+  {
+    "question": "cual son las edades de los jugadores de SAS",
+    "dataset": "players.csv",
+    "intent": null,
+    "ts": 1778464372.515723,
+    "response": null
+  },
+  {
+    "question": "cual es el promedio de edad de los jugadores de SAS?",
+    "dataset": "players.csv",
+    "intent": null,
+    "ts": 1778464344.9176965,
+    "response": null
+  },
+  {
+    "question": "cual es el promedio de edad de san antonio spurs",
+    "dataset": "players.csv",
+    "intent": null,
+    "ts": 1778464261.3968453,
+    "response": null
+  },
+  {
+    "question": "de que equipo son los jugadores con mejor net rating? decime 2 equipos y sus jugadores",
+    "dataset": "players.csv",
+    "intent": null,
+    "ts": 1778464125.1230285,
+    "response": null
+  },
+  {
+    "question": "de que euipo son los jugadores con mejor net rating? ",
+    "dataset": "players.csv",
+    "intent": null,
+    "ts": 1778464082.210245,
+    "response": null
+  },
+  {
+    "question": "15 jugadores con peor net rating",
+    "dataset": "players.csv",
+    "intent": null,
+    "ts": 1778463915.4132998,
+    "response": null
+  },
+  {
+    "question": "5 jugadores con peor net rating",
+    "dataset": "players.csv",
+    "intent": null,
+    "ts": 1778463901.0052767,
+    "response": null
+  },
+  {
+    "question": "cual es el jugador con el peor net rating?",
+    "dataset": "players.csv",
+    "intent": null,
+    "ts": 1778463878.0522525,
+    "response": null
+  },
+  {
+    "question": "2 equipos con mas puntos",
+    "dataset": "nbaStats - Hoja 1.csv",
+    "intent": null,
+    "ts": 1778460814.3838913,
+    "response": null
+  },
+  {
+    "question": "5 equipos con mas puntos",
+    "dataset": "nbaStats - Hoja 1.csv",
+    "intent": null,
+    "ts": 1778460773.6871367,
+    "response": null
+  },
+  {
     "question": "5 equipos con mas puntso, rebotes y asistencias",
     "dataset": "nbaStats - Hoja 1.csv",
     "intent": null,
@@ -11,13 +109,6 @@
     "dataset": "nbaStats - Hoja 1.csv",
     "intent": null,
     "ts": 1778454599.3037653,
-    "response": null
-  },
-  {
-    "question": "5 equipos con mas puntos",
-    "dataset": "nbaStats - Hoja 1.csv",
-    "intent": null,
-    "ts": 1778454281.9097636,
     "response": null
   },
   {

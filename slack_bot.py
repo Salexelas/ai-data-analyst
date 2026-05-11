@@ -37,20 +37,31 @@ llm = LLMService()
 
 DATA_PATH = "data"
 
-files = sorted(os.listdir(DATA_PATH), reverse=True)
+files = sorted(
+    os.listdir(DATA_PATH),
+    reverse=True
+)
 
 last_file = files[0]
 
-file_path = os.path.join(DATA_PATH, last_file)
+file_path = os.path.join(
+    DATA_PATH,
+    last_file
+)
 
 if last_file.endswith(".csv"):
+
     file_type = "csv"
 
 elif last_file.endswith(".xlsx"):
+
     file_type = "excel"
 
 else:
-    raise ValueError("Unsupported dataset")
+
+    raise ValueError(
+        "Unsupported dataset"
+    )
 
 connector = create_connector(
     file_type,
@@ -66,44 +77,70 @@ def handle_message(body, say):
 
     event = body["event"]
 
+    # -------------------------
+    # IGNORE BOTS
+    # -------------------------
     if event.get("bot_id"):
+
         return
 
-    question = event.get("text", "")
+    question = event.get(
+        "text",
+        ""
+    )
 
     try:
 
         result = answer_question(
+
             question=question,
+
             connector=connector,
+
             dataset_id=last_file,
+
             semantic_layer=None,
+
             llm=llm
         )
 
-        if result["type"] == "table":
+        # -------------------------
+        # ERROR
+        # -------------------------
+        if result.type == "error":
 
-            explanation = result.get(
-                "explanation",
-                ""
-            )
-
-            data = result["data"]
-
-            preview = data.head(10).to_string(index=False)
-
-            response = f"""
-{explanation}
-
-```{preview}```
-"""
-
-        else:
-
-            response = result.get(
+            response = getattr(
+                result,
                 "message",
                 "Error"
             )
+
+        # -------------------------
+        # ANALYTICS
+        # -------------------------
+        else:
+
+            markdown = (
+                result.markdown
+                or ""
+            )
+
+            data = result.data
+
+            preview = ""
+
+            if data is not None:
+
+                preview = (
+                    data.head(10)
+                    .to_string(index=False)
+                )
+
+            response = f"""
+{markdown}
+
+```{preview}```
+"""
 
     except Exception as e:
 
