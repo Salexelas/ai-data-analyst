@@ -1,5 +1,6 @@
 from faster_whisper import WhisperModel
 import tempfile
+import os
 
 
 class WhisperService:
@@ -8,6 +9,7 @@ class WhisperService:
 
         self.model = WhisperModel(
             "base",
+            device="cpu",
             compute_type="int8"
         )
 
@@ -29,5 +31,7 @@ class WhisperService:
             segment.text
             for segment in segments
         )
+
+        os.remove(audio_path)
 
         return text.strip()

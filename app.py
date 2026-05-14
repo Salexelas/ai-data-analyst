@@ -1,6 +1,6 @@
 import streamlit as st
 import os
-from services.speech.whisper_service import WhisperService
+
 from ui.components.sidebar import render_sidebar
 from ui.pages.chat import render_chat
 from ui.pages.ml import render_ml
@@ -11,22 +11,19 @@ from ui.pages.ranking import render_ranking
 from ui.pages.recents import render_recents
 from ui.pages.datasets import render_datasets
 from ui.pages.dataset_editor import render_dataset_editor
-from ui.pages.dataset_info import (
-    render_dataset_info
-)
+from ui.pages.dataset_info import render_dataset_info
+from ui.pages.graph_builder import render_graph_builder
+from ui.pages.ocr_studio import render_ocr_studio
 
 from core.llm_service import LLMService
 from connectors.factory import create_connector
 
-# =========================
-# 🔹 CONFIG
-# =========================
-st.set_page_config(layout="wide")
-
 DATA_PATH = "data"
 
+st.set_page_config(layout="wide")
+
 # =========================
-# 🔹 SESSION STATE
+# SESSION STATE
 # =========================
 DEFAULT_STATE = {
     "llm": None,
@@ -43,30 +40,17 @@ DEFAULT_STATE = {
 }
 
 for key, value in DEFAULT_STATE.items():
-
     if key not in st.session_state:
         st.session_state[key] = value
 
 # =========================
-# 🔹 LLM INIT
+# LLM
 # =========================
 if st.session_state["llm"] is None:
     st.session_state["llm"] = LLMService()
 
 # =========================
-# 🔥 WHISPER INIT
-# =========================
-
-@st.cache_resource
-def get_whisper():
-    return WhisperService()
-
-
-if "whisper" not in st.session_state:
-    st.session_state["whisper"] = get_whisper()
-
-# =========================
-# 🔥 AUTOLOAD DATASET
+# AUTOLOAD DATASET
 # =========================
 if st.session_state["connector"] is None:
 
@@ -77,31 +61,18 @@ if st.session_state["connector"] is None:
         if files:
 
             last_file = files[0]
+            file_path = os.path.join(DATA_PATH, last_file)
 
-            file_path = os.path.join(
-                DATA_PATH,
-                last_file
-            )
-
-            # -------------------------
-            # Detect file type
-            # -------------------------
             if last_file.endswith(".csv"):
                 file_type = "csv"
-
             elif last_file.endswith(".xlsx"):
                 file_type = "excel"
-
             else:
                 file_type = None
 
-            # -------------------------
-            # Load dataset
-            # -------------------------
             if file_type:
 
                 try:
-
                     connector = create_connector(
                         file_type,
                         {"file_path": file_path}
@@ -116,18 +87,15 @@ if st.session_state["connector"] is None:
                     )
 
                 except Exception as e:
-
-                    st.warning(
-                        f"No se pudo cargar dataset: {e}"
-                    )
+                    st.warning(f"No se pudo cargar dataset: {e}")
 
 # =========================
-# 🔹 SIDEBAR
+# SIDEBAR
 # =========================
 render_sidebar()
 
 # =========================
-# 🔥 ROUTES
+# ROUTES
 # =========================
 ROUTES = {
     "chat": render_chat,
@@ -139,13 +107,11 @@ ROUTES = {
     "datasets_manage": render_datasets,
     "dataset_editor": render_dataset_editor,
     "dataset_info": render_dataset_info,
+    "graph_builder": render_graph_builder,
     "ranking": render_ranking,
-    "recents": render_recents
+    "recents": render_recents,
+    "ocr_studio": render_ocr_studio
 }
 
-# =========================
-# ▶️ EXECUTE PAGE
-# =========================
 page = st.session_state.get("page", "chat")
-
 ROUTES.get(page, render_chat)()

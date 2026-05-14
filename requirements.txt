@@ -23,3 +23,9 @@ ctranslate2
 av
 torchvision
 slack-bolt
+easyocr
+pdf2image
+pillow
+python-docx
+paddlepaddle
+paddleocr

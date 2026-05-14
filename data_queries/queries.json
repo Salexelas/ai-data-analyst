@@ -1,5 +1,33 @@
 [
   {
+    "question": "jugadores con mas perdidas, cantidad",
+    "dataset": "players.csv",
+    "intent": null,
+    "ts": 1778723573.9737558,
+    "response": null
+  },
+  {
+    "question": "jugadores con mas perdidas(TOV)",
+    "dataset": "players.csv",
+    "intent": null,
+    "ts": 1778723561.171294,
+    "response": null
+  },
+  {
+    "question": "jugador con mas perdidas(TOV)",
+    "dataset": "players.csv",
+    "intent": null,
+    "ts": 1778723538.4135652,
+    "response": null
+  },
+  {
+    "question": "jugadores con  nmas rebotes , pñuntos y asistencias",
+    "dataset": "players.csv",
+    "intent": null,
+    "ts": 1778712686.8921947,
+    "response": null
+  },
+  {
     "question": "cuales son los 3 equipos con el promedio de edad mas bajo",
     "dataset": "players.csv",
     "intent": null,
