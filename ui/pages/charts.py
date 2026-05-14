@@ -1,10 +1,8 @@
 import streamlit as st
 import os
 
-from ui.pages.dataset_editor import (
-    load_schema,
-    apply_column_types
-)
+from dataset_editor.services.schema_service import SchemaService
+from dataset_editor.services.type_service import TypeService
 
 from ui.components.charts.chart_builder import (
     build_chart_config
@@ -20,37 +18,35 @@ def render_charts():
     st.title("📊 Constructor de gráficos")
 
     # ==================================================
-    # VALIDATE DATASET
+    # VALIDATE CONNECTOR
     # ==================================================
     connector = st.session_state.get("connector")
 
     if not connector:
-
         st.warning("Primero cargá un dataset")
         return
 
     # ==================================================
-    # FILE PATH
+    # VALIDATE FILE
     # ==================================================
     file_path = st.session_state.get("file_path")
 
     if not file_path:
-
         st.warning("No hay dataset activo")
         return
 
     file_name = os.path.basename(file_path)
 
     # ==================================================
-    # LOAD DATAFRAME
+    # LOAD DATA
     # ==================================================
     try:
 
         df = connector.preview(100000)
 
-        schema = load_schema(file_name)
+        schema = SchemaService.load(file_name)
 
-        df = apply_column_types(
+        df = TypeService.apply(
             df,
             schema
         )

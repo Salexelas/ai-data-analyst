@@ -10,7 +10,7 @@ from ui.pages.data import render_data
 from ui.pages.ranking import render_ranking
 from ui.pages.recents import render_recents
 from ui.pages.datasets import render_datasets
-from ui.pages.dataset_editor import render_dataset_editor
+from dataset_editor.pages.dataset_editor import render_dataset_editor
 from ui.pages.dataset_info import render_dataset_info
 from ui.pages.graph_builder import render_graph_builder
 from ui.pages.ocr_studio import render_ocr_studio

@@ -1,7 +1,7 @@
 app.py
 import streamlit as st
 import os
-from services.speech.whisper_service import WhisperService
+
 from ui.components.sidebar import render_sidebar
 from ui.pages.chat import render_chat
 from ui.pages.ml import render_ml
@@ -12,22 +12,19 @@ from ui.pages.ranking import render_ranking
 from ui.pages.recents import render_recents
 from ui.pages.datasets import render_datasets
 from ui.pages.dataset_editor import render_dataset_editor
-from ui.pages.dataset_info import (
-    render_dataset_info
-)
+from ui.pages.dataset_info import render_dataset_info
+from ui.pages.graph_builder import render_graph_builder
+from ui.pages.ocr_studio import render_ocr_studio
 
 from core.llm_service import LLMService
 from connectors.factory import create_connector
 
-# =========================
-# 🔹 CONFIG
-# =========================
-st.set_page_config(layout="wide")
-
 DATA_PATH = "data"
 
+st.set_page_config(layout="wide")
+
 # =========================
-# 🔹 SESSION STATE
+# SESSION STATE
 # =========================
 DEFAULT_STATE = {
     "llm": None,
@@ -44,30 +41,17 @@ DEFAULT_STATE = {
 }
 
 for key, value in DEFAULT_STATE.items():
-
     if key not in st.session_state:
         st.session_state[key] = value
 
 # =========================
-# 🔹 LLM INIT
+# LLM
 # =========================
 if st.session_state["llm"] is None:
     st.session_state["llm"] = LLMService()
 
 # =========================
-# 🔥 WHISPER INIT
-# =========================
-
-@st.cache_resource
-def get_whisper():
-    return WhisperService()
-
-
-if "whisper" not in st.session_state:
-    st.session_state["whisper"] = get_whisper()
-
-# =========================
-# 🔥 AUTOLOAD DATASET
+# AUTOLOAD DATASET
 # =========================
 if st.session_state["connector"] is None:
 
@@ -78,31 +62,18 @@ if st.session_state["connector"] is None:
         if files:
 
             last_file = files[0]
+            file_path = os.path.join(DATA_PATH, last_file)
 
-            file_path = os.path.join(
-                DATA_PATH,
-                last_file
-            )
-
-            # -------------------------
-            # Detect file type
-            # -------------------------
             if last_file.endswith(".csv"):
                 file_type = "csv"
-
             elif last_file.endswith(".xlsx"):
                 file_type = "excel"
-
             else:
                 file_type = None
 
-            # -------------------------
-            # Load dataset
-            # -------------------------
             if file_type:
 
                 try:
-
                     connector = create_connector(
                         file_type,
                         {"file_path": file_path}
@@ -117,18 +88,15 @@ if st.session_state["connector"] is None:
                     )
 
                 except Exception as e:
-
-                    st.warning(
-                        f"No se pudo cargar dataset: {e}"
-                    )
+                    st.warning(f"No se pudo cargar dataset: {e}")
 
 # =========================
-# 🔹 SIDEBAR
+# SIDEBAR
 # =========================
 render_sidebar()
 
 # =========================
-# 🔥 ROUTES
+# ROUTES
 # =========================
 ROUTES = {
     "chat": render_chat,
@@ -140,115 +108,146 @@ ROUTES = {
     "datasets_manage": render_datasets,
     "dataset_editor": render_dataset_editor,
     "dataset_info": render_dataset_info,
+    "graph_builder": render_graph_builder,
     "ranking": render_ranking,
-    "recents": render_recents
+    "recents": render_recents,
+    "ocr_studio": render_ocr_studio
 }
 
-# =========================
-# ▶️ EXECUTE PAGE
-# =========================
 page = st.session_state.get("page", "chat")
-
 ROUTES.get(page, render_chat)()
 
 
 
 
 
-charts.py
+
+
+sidebar.py
 import streamlit as st
 import os
 
-from ui.pages.dataset_editor import (
-    load_schema,
-    apply_column_types
-)
 
-from ui.components.charts.chart_builder import (
-    build_chart_config
-)
+def render_sidebar():
 
-from ui.components.charts.chart_renderer import (
-    render_chart
-)
+    with st.sidebar:
+        st.title("📊 App Data IA Analisis")
 
+        # 🔥 DATASET ACTIVO
+        if "file_path" in st.session_state and st.session_state["file_path"]:
+            st.success(
+                f"📊 Dataset:\n{os.path.basename(st.session_state['file_path'])}"
+            )
+        else:
+            st.warning("No hay dataset activo")
 
-def render_charts():
+        # =========================
+        # MAIN
+        # =========================
+        if st.button("🆕 Nueva conversación"):
+            st.session_state.page = "chat"
 
-    st.title("📊 Constructor de gráficos")
+        st.markdown("---")
 
-    # ==================================================
-    # VALIDATE DATASET
-    # ==================================================
-    connector = st.session_state.get("connector")
+        # =========================
+        # DATA
+        # =========================
+        with st.expander("📥 Ingresar Datos"):
 
-    if not connector:
+            if st.button("+ Crear"):
+                st.session_state.page = "data_create"
 
-        st.warning("Primero cargá un dataset")
-        return
+            if st.button("Fuente externa"):
+                st.session_state.page = "data_external"
 
-    # ==================================================
-    # FILE PATH
-    # ==================================================
-    file_path = st.session_state.get("file_path")
+        # =========================
+        # OCR STUDIO
+        # =========================
+        with st.expander("📷 OCR Studio"):
 
-    if not file_path:
+            if st.button("Procesar documentos"):
+                st.session_state.page = "ocr_studio"
 
-        st.warning("No hay dataset activo")
-        return
+        # =========================
+        # DATASETS
+        # =========================
+        with st.expander("📚 Datasets"):
 
-    file_name = os.path.basename(file_path)
+            if st.button("Ver / Gestionar"):
+                st.session_state.page = "datasets_manage"
 
-    # ==================================================
-    # LOAD DATAFRAME
-    # ==================================================
-    try:
+        # =========================
+        # GRAPH BUILDER
+        # =========================
+        with st.expander("🕸️ Graph Builder"):
 
-        df = connector.preview(100000)
+            if st.button("Abrir canvas"):
+                st.session_state.page = "graph_builder"
 
-        schema = load_schema(file_name)
+        # =========================
+        # SEMANTIC
+        # =========================
+        with st.expander("🧠 Semántica"):
 
-        df = apply_column_types(
-            df,
-            schema
-        )
+            if st.button("Editar"):
+                st.session_state.page = "semantic"
 
-    except Exception as e:
+        # =========================
+        # CHARTS
+        # =========================
+        with st.expander("📊 Gráficos"):
 
-        st.error(f"Error cargando dataset: {e}")
-        return
+            if st.button("Ver gráficos"):
+                st.session_state.page = "charts"
 
-    # ==================================================
-    # CONFIG
-    # ==================================================
-    config = build_chart_config(df)
+        # =========================
+        # ML
+        # =========================
+        with st.expander("🤖 ML"):
 
-    # ==================================================
-    # RENDER
-    # ==================================================
-    render_chart(
-        df,
-        config
-    )
+            if st.button("Modelos"):
+                st.session_state.page = "ml"
 
+        # =========================
+        # RANKING
+        # =========================
+        with st.expander("🏆 Ranking"):
 
+            if st.button("Queries"):
+                st.session_state.page = "ranking"
+
+        st.markdown("---")
+
+        # =========================
+        # RECENTS
+        # =========================
+        with st.expander("🕓 Recientes", expanded=True):
+
+            queries = st.session_state.get(
+                "recent_queries",
+                []
+            )
+
+            for i, q in enumerate(queries):
+
+                if st.button(
+                    q,
+                    key=f"sb_recent_{i}"
+                ):
+                    st.session_state["prefill_question"] = q
+                    st.session_state.page = "chat"
 
 
 
 chat.py
 import streamlit as st
 
+from services.speech.loader import load_whisper
 from agents.service import answer_question
 from core.query_store import save_query
 
-from ui.components.audio_input import (
-    render_audio_input
-)
-
-# 🔥 NUEVO
-from renderers.streamlit_renderer import (
-    render_analytics
-)
+from ui.components.audio_input import render_audio_input
+from renderers.streamlit_renderer import render_analytics
 
 
 def render_chat():
@@ -261,9 +260,6 @@ def render_chat():
         "📈 Vista"
     ])
 
-    # =========================
-    # TAB CHAT
-    # =========================
     with tabs[0]:
 
         default_q = st.session_state.get(
@@ -271,118 +267,65 @@ def render_chat():
             ""
         )
 
-        # =========================
-        # 🔹 INPUT TEXTO
-        # =========================
         text_prompt = st.text_input(
-            "Escribí tu pregunta...",
+            "Consulta sobre dataset",
             value=default_q
         )
 
-        # =========================
-        # 🔹 AUDIO
-        # =========================
         audio = render_audio_input()
 
-        # =========================
-        # INIT
-        # =========================
         if "audio_prompt" not in st.session_state:
-
             st.session_state["audio_prompt"] = ""
 
-        # =========================
-        # TRANSCRIBE
-        # =========================
         if audio and "bytes" in audio:
 
             with st.spinner("🎧 Transcribiendo..."):
 
-                transcription = (
-                    st.session_state["whisper"]
-                    .transcribe(audio["bytes"])
+                transcription = load_whisper().transcribe(
+                    audio["bytes"]
                 )
 
-            st.session_state[
-                "audio_prompt"
-            ] = transcription
+            st.session_state["audio_prompt"] = transcription
 
-        # =========================
-        # SHOW AUDIO
-        # =========================
         if st.session_state["audio_prompt"]:
 
             st.info(
                 f"🎤 {st.session_state['audio_prompt']}"
             )
 
-        # =========================
-        # FINAL QUESTION
-        # =========================
         question = (
             text_prompt
             or st.session_state["audio_prompt"]
         )
 
-        # =========================
-        # BUTTONS
-        # =========================
         col1, col2 = st.columns([1, 1])
 
-        # =========================
-        # EXECUTE
-        # =========================
         with col1:
 
             if st.button("Ejecutar"):
 
-                # -------------------------
-                # DATASET VALIDATION
-                # -------------------------
                 if "connector" not in st.session_state:
 
-                    st.error(
-                        "Primero cargá un dataset"
-                    )
-
+                    st.error("Primero cargá un dataset")
                     return
 
-                # -------------------------
-                # QUESTION VALIDATION
-                # -------------------------
                 if not question:
 
-                    st.warning(
-                        "Ingresá una pregunta"
-                    )
-
+                    st.warning("Ingresá una pregunta")
                     return
 
-                # -------------------------
-                # RECENTS
-                # -------------------------
                 st.session_state.setdefault(
                     "recent_queries",
                     []
                 )
 
-                if (
-                    question
-                    not in st.session_state[
-                        "recent_queries"
-                    ]
-                ):
+                if question not in st.session_state["recent_queries"]:
 
-                    st.session_state[
-                        "recent_queries"
-                    ].insert(
+                    st.session_state["recent_queries"].insert(
                         0,
                         question
                     )
 
-                # -------------------------
-                # SAVE QUERY
-                # -------------------------
                 save_query(
                     question,
                     dataset_id=st.session_state.get(
@@ -391,52 +334,24 @@ def render_chat():
                     intent=None
                 )
 
-                # -------------------------
-                # PIPELINE
-                # -------------------------
-                with st.spinner(
-                    "🧠 Analizando..."
-                ):
+                with st.spinner("🧠 Analizando..."):
 
                     response = answer_question(
-
                         question=question,
-
-                        connector=st.session_state[
-                            "connector"
-                        ],
-
-                        dataset_id=st.session_state.get(
-                            "dataset_id"
-                        ),
-
-                        semantic_layer=st.session_state.get(
-                            "semantic_layer"
-                        ),
-
-                        llm=st.session_state[
-                            "llm"
-                        ]
+                        connector=st.session_state["connector"],
+                        dataset_id=st.session_state.get("dataset_id"),
+                        semantic_layer=st.session_state.get("semantic_layer"),
+                        llm=st.session_state["llm"]
                     )
 
-                st.session_state[
-                    "last_response"
-                ] = response
+                st.session_state["last_response"] = response
 
-        # =========================
-        # CLEAR
-        # =========================
         with col2:
 
             if st.button("Limpiar"):
 
-                st.session_state[
-                    "prefill_question"
-                ] = ""
-
-                st.session_state[
-                    "audio_prompt"
-                ] = ""
+                st.session_state["prefill_question"] = ""
+                st.session_state["audio_prompt"] = ""
 
                 st.session_state.pop(
                     "last_response",
@@ -445,1292 +360,316 @@ def render_chat():
 
         st.markdown("---")
 
-        # =========================
-        # RESULT
-        # =========================
-        response = st.session_state.get(
-            "last_response"
-        )
+        response = st.session_state.get("last_response")
 
         if response:
 
-            # -------------------------
-            # ERROR
-            # -------------------------
             if response.type == "error":
-
-                st.error(
-                    response.message
-                )
-
-            # -------------------------
-            # ANALYTICS RESPONSE
-            # -------------------------
+                st.error(response.message)
             else:
-
                 render_analytics(response)
 
         else:
+            st.info("Todavía no ejecutaste ninguna consulta")
 
-            st.info(
-                "Todavía no ejecutaste ninguna consulta"
+    with tabs[1]:
+        st.markdown("### 🔀 Comparar datasets")
+        st.info("Próximamente 🚧")
+
+    with tabs[2]:
+        st.markdown("### 📈 Opciones de vista")
+        st.checkbox("Modo compacto")
+        st.checkbox("Mostrar insight")
+        st.checkbox("Mostrar SQL")
+
+
+
+
+ocr_studio.py
+import streamlit as st
+import os
+from datetime import datetime
+
+from services.ocr.loader import load_ocr
+from services.ocr.llm_parser_service import OCRLLMParserService
+from services.ocr.validator_service import OCRValidatorService
+from connectors.factory import create_connector
+
+DATA_PATH = "data"
+os.makedirs(DATA_PATH, exist_ok=True)
+
+
+def render_ocr_studio():
+
+    st.title("📷 OCR Studio")
+
+    uploaded = st.file_uploader(
+        "Subir archivo",
+        type=["png", "jpg", "jpeg", "pdf"]
+    )
+
+    if not uploaded:
+        return
+
+    # limpiar estado si cambia archivo
+    current_file = uploaded.name
+    if st.session_state.get("ocr_last_file") != current_file:
+        st.session_state["ocr_last_file"] = current_file
+        st.session_state["ocr_raw_text"] = ""
+        st.session_state.pop("ocr_df", None)
+
+    # =========================
+    # OCR
+    # =========================
+    if "ocr_raw_text" not in st.session_state:
+        st.session_state["ocr_raw_text"] = ""
+
+    if st.button("Leer archivo"):
+
+        with st.spinner("Procesando OCR..."):
+
+            ocr = load_ocr()
+
+            # IMPORTANTE: pasar solo bytes
+            text = ocr.extract_text(
+                uploaded.getvalue()
             )
 
-    # =========================
-    # TAB COMPARACIÓN
-    # =========================
-    with tabs[1]:
-
-        st.markdown(
-            "### 🔀 Comparar datasets"
-        )
-
-        st.info(
-            "Próximamente 🚧"
-        )
+            st.session_state["ocr_raw_text"] = text
 
     # =========================
-    # TAB VISTA
+    # RAW TEXT
     # =========================
-    with tabs[2]:
+    if st.session_state["ocr_raw_text"]:
 
-        st.markdown(
-            "### 📈 Opciones de vista"
+        st.subheader("Texto detectado (editable)")
+
+        editable_text = st.text_area(
+            "Corregí si hace falta",
+            value=st.session_state["ocr_raw_text"],
+            height=320
         )
 
-        st.checkbox(
-            "Modo compacto"
+        context = st.text_input(
+            "Contexto",
+            placeholder="Ej: factura ferretería / estadísticas NBA"
         )
 
-        st.checkbox(
-            "Mostrar insight"
+        columns = st.text_input(
+            "Columnas",
+            placeholder="Ej: producto,cantidad,precio_unitario"
         )
 
-        st.checkbox(
-            "Mostrar SQL"
+        examples = st.text_area(
+            "Ejemplos (opcional)",
+            placeholder="Ej:\nPintura,3,15500\nCeramica,2,12000"
         )
 
+        # =========================
+        # GENERATE DATAFRAME
+        # =========================
+        if st.button("Generar dataset"):
 
-data.py
-import streamlit as st
-import os
-from connectors.factory import create_connector
-from semantic.utils import get_dataset_id, load_semantic_layer
+            cols = [
+                c.strip()
+                for c in columns.split(",")
+                if c.strip()
+            ]
 
-# 📁 carpeta persistente
-DATA_PATH = "data"
-os.makedirs(DATA_PATH, exist_ok=True)
+            if not cols:
+                st.warning("Ingresá al menos una columna")
+                return
 
+            parser = OCRLLMParserService()
 
-def render_data():
+            with st.spinner("Estructurando dataset..."):
 
-    st.title("📥 Gestión de Datos")
-
-    tabs = st.tabs([
-        "📂 Subir archivo",
-        "🔗 Conectar fuente",
-        "📊 Preview"
-    ])
-
-    # -------------------------
-    # 📂 UPLOAD (CSV / Excel)
-    # -------------------------
-    with tabs[0]:
-
-        file = st.file_uploader("Subir CSV / Excel", type=["csv", "xlsx"])
-
-        if file and st.button("Cargar archivo"):
-
-            file_path = os.path.join(DATA_PATH, file.name)
-
-            # 💾 guardar archivo en disco
-            with open(file_path, "wb") as f:
-                f.write(file.getbuffer())
-
-            file_type = "csv" if file.name.endswith(".csv") else "excel"
-
-            # ⚠️ ahora usamos file_path (persistente)
-            connector = create_connector(file_type, {"file_path": file_path})
-
-            st.session_state["connector"] = connector
-            st.session_state["file_path"] = file_path
-
-            dataset_id = get_dataset_id(file_type, {"file": file.name})
-            st.session_state["dataset_id"] = dataset_id
-
-            loaded = load_semantic_layer(dataset_id)
-            if loaded:
-                st.session_state["semantic_layer"] = loaded
-
-            st.success(f"✅ Dataset guardado en {file_path}")
-
-    # -------------------------
-    # 🔗 CONNECT (DB / API)
-    # -------------------------
-    with tabs[1]:
-
-        source_type = st.selectbox(
-            "Tipo de fuente",
-            ["postgres", "mysql", "api", "google_sheets"]
-        )
-
-        config = {}
-
-        if source_type in ["postgres", "mysql"]:
-            config["uri"] = st.text_input("Connection string")
-
-        elif source_type == "api":
-            config["base_url"] = st.text_input("Base URL")
-
-        elif source_type == "google_sheets":
-            config["url"] = st.text_input("Google Sheet URL")
-
-        if st.button("Conectar"):
-
-            connector = create_connector(source_type, config)
-
-            st.session_state["connector"] = connector
-
-            dataset_id = get_dataset_id(source_type, config)
-            st.session_state["dataset_id"] = dataset_id
-
-            loaded = load_semantic_layer(dataset_id)
-            if loaded:
-                st.session_state["semantic_layer"] = loaded
-
-            st.success("✅ Conectado")
-
-    # -------------------------
-    # 📊 PREVIEW
-    # -------------------------
-    with tabs[2]:
-
-        if "connector" in st.session_state:
-
-            st.info("Vista previa del dataset")
-
-            preview = st.session_state["connector"].preview()
-            st.dataframe(preview)
-
-        else:
-            st.warning("Primero cargá una fuente de datos")
-
-
-
-datasets_editor.py
-import streamlit as st
-import pandas as pd
-import os
-import json
-
-from connectors.factory import create_connector
-
-# ==================================================
-# PATHS
-# ==================================================
-DATA_PATH = "data"
-SCHEMA_PATH = "schemas"
-
-os.makedirs(DATA_PATH, exist_ok=True)
-os.makedirs(SCHEMA_PATH, exist_ok=True)
-
-# ==================================================
-# COLUMN TYPES
-# ==================================================
-TYPE_OPTIONS = [
-    "auto",
-    "text",
-    "number",
-    "datetime",
-    "boolean",
-    "category",
-    "id"
-]
-
-# ==================================================
-# LOAD SCHEMA
-# ==================================================
-def load_schema(dataset_name):
-
-    schema_file = os.path.join(
-        SCHEMA_PATH,
-        f"{dataset_name}.schema.json"
-    )
-
-    if not os.path.exists(schema_file):
-        return {}
-
-    try:
-
-        with open(schema_file, "r", encoding="utf-8") as f:
-            return json.load(f)
-
-    except:
-        return {}
-
-# ==================================================
-# SAVE SCHEMA
-# ==================================================
-def save_schema(dataset_name, schema):
-
-    schema_file = os.path.join(
-        SCHEMA_PATH,
-        f"{dataset_name}.schema.json"
-    )
-
-    with open(schema_file, "w", encoding="utf-8") as f:
-
-        json.dump(
-            schema,
-            f,
-            indent=4,
-            ensure_ascii=False
-        )
-
-# ==================================================
-# DETECT DEFAULT TYPE
-# ==================================================
-def detect_default_type(series):
-
-    dtype = str(series.dtype)
-
-    if "datetime" in dtype:
-        return "datetime"
-
-    if "int" in dtype or "float" in dtype:
-        return "number"
-
-    if "bool" in dtype:
-        return "boolean"
-
-    return "text"
-
-# ==================================================
-# APPLY COLUMN TYPES
-# ==================================================
-def apply_column_types(df, schema):
-
-    for col, dtype in schema.items():
-
-        if col not in df.columns:
-            continue
-
-        try:
-
-            # -------------------------
-            # DATETIME
-            # -------------------------
-            if dtype == "datetime":
-
-                df[col] = pd.to_datetime(
-                    df[col],
-                    dayfirst=True,
-                    errors="coerce"
+                df = parser.parse_to_dataframe(
+                    raw_text=editable_text,
+                    columns=cols,
+                    examples=examples,
+                    context=context,
+                    llm=st.session_state["llm"]
                 )
 
-            # -------------------------
-            # NUMBER
-            # -------------------------
-            elif dtype == "number":
+            st.session_state["ocr_df"] = df
 
-                df[col] = pd.to_numeric(
-                    df[col],
-                    errors="coerce"
-                )
+    # =========================
+    # PREVIEW
+    # =========================
+    if "ocr_df" in st.session_state:
 
-            # -------------------------
-            # BOOLEAN
-            # -------------------------
-            elif dtype == "boolean":
-
-                df[col] = df[col].astype("bool")
-
-            # -------------------------
-            # CATEGORY
-            # -------------------------
-            elif dtype == "category":
-
-                df[col] = df[col].astype("category")
-
-            # -------------------------
-            # TEXT
-            # -------------------------
-            elif dtype == "text":
-
-                df[col] = df[col].astype("string")
-
-        except Exception as e:
-
-            st.warning(f"Error casteando {col}: {e}")
-
-    return df
-
-# ==================================================
-# MAIN
-# ==================================================
-def render_dataset_editor():
-
-    st.title("✏️ Editor de Dataset")
-
-    # ==================================================
-    # SESSION
-    # ==================================================
-    file_path = st.session_state.get("file_path")
-
-    if not file_path:
-
-        st.warning("Primero cargá un dataset")
-        return
-
-    if not os.path.exists(file_path):
-
-        st.error("El archivo no existe")
-        return
-
-    file_name = os.path.basename(file_path)
-
-    # ==================================================
-    # FILE TYPE
-    # ==================================================
-    if file_name.endswith(".csv"):
-
-        file_type = "csv"
-
-    elif file_name.endswith(".xlsx"):
-
-        file_type = "excel"
-
-    else:
-
-        st.error("Formato no soportado")
-        return
-
-    # ==================================================
-    # LOAD DATAFRAME
-    # ==================================================
-    try:
-
-        connector = create_connector(
-            file_type,
-            {"file_path": file_path}
-        )
-
-        df = connector.preview(100000)
-
-    except Exception as e:
-
-        st.error(f"Error cargando dataset: {e}")
-        return
-
-    # ==================================================
-    # LOAD EXISTING SCHEMA
-    # ==================================================
-    schema = load_schema(file_name)
-
-    # ==================================================
-    # TABS
-    # ==================================================
-    tabs = st.tabs([
-        "📝 Columnas",
-        "🧠 Tipos",
-        "📊 Datos"
-    ])
-
-    # ==================================================
-    # 📝 COLUMNAS
-    # ==================================================
-    with tabs[0]:
-
-        st.subheader("📝 Renombrar columnas")
-
-        rename_map = {}
-
-        cols = st.columns(2)
-
-        for i, col in enumerate(df.columns):
-
-            with cols[i % 2]:
-
-                new_name = st.text_input(
-                    f"{col}",
-                    value=col,
-                    key=f"rename_{col}"
-                )
-
-                rename_map[col] = new_name
-
-    # ==================================================
-    # 🧠 TIPOS
-    # ==================================================
-    with tabs[1]:
-
-        st.subheader("🧠 Tipos de columnas")
-
-        column_types = {}
-
-        cols = st.columns(2)
-
-        for i, col in enumerate(df.columns):
-
-            with cols[i % 2]:
-
-                saved_type = schema.get(col)
-
-                default_type = (
-                    saved_type
-                    if saved_type
-                    else detect_default_type(df[col])
-                )
-
-                column_types[col] = st.selectbox(
-                    f"Tipo → {col}",
-                    TYPE_OPTIONS,
-                    index=TYPE_OPTIONS.index(default_type),
-                    key=f"type_{col}"
-                )
-
-    # ==================================================
-    # APPLY TYPES
-    # ==================================================
-    df = apply_column_types(
-        df,
-        column_types
-    )
-
-    # ==================================================
-    # 📊 DATOS
-    # ==================================================
-    with tabs[2]:
-
-        st.subheader("📊 Editor")
+        st.subheader("Preview dataset")
 
         edited_df = st.data_editor(
-            df,
+            st.session_state["ocr_df"],
             use_container_width=True,
-            num_rows="dynamic",
-            height=600
+            num_rows="dynamic"
         )
 
-    # ==================================================
-    # APPLY RENAME
-    # ==================================================
-    edited_df.columns = [
-        rename_map[c]
-        for c in edited_df.columns
-    ]
+        validator = OCRValidatorService()
 
-    # ==================================================
-    # SAVE
-    # ==================================================
-    st.divider()
+        errors = validator.validate_dataframe(
+            edited_df
+        )
 
-    if st.button("💾 Guardar cambios"):
+        if errors:
 
-        try:
+            for err in errors:
+                st.error(err)
 
-            # ==================================================
-            # SAVE DATASET
-            # ==================================================
-            if file_type == "csv":
+        else:
+
+            st.success("Dataset válido ✔")
+
+            if st.button("Guardar dataset"):
+
+                file_name = datetime.now().strftime(
+                    "ocr_%Y%m%d_%H%M%S"
+                ) + ".csv"
+
+                save_path = os.path.join(
+                    DATA_PATH,
+                    file_name
+                )
 
                 edited_df.to_csv(
-                    file_path,
+                    save_path,
                     index=False
                 )
-
-            else:
-
-                edited_df.to_excel(
-                    file_path,
-                    index=False
-                )
-
-            # ==================================================
-            # UPDATE SCHEMA
-            # ==================================================
-            updated_schema = {}
-
-            for old_col, new_col in rename_map.items():
-
-                updated_schema[new_col] = column_types[old_col]
-
-            save_schema(
-                file_name,
-                updated_schema
-            )
-
-            # ==================================================
-            # RELOAD CONNECTOR
-            # ==================================================
-            connector = create_connector(
-                file_type,
-                {"file_path": file_path}
-            )
-
-            st.session_state["connector"] = connector
-
-            # invalidate semantic layer
-            st.session_state["semantic_layer"] = None
-
-            st.success("✅ Dataset actualizado")
-
-            st.rerun()
-
-        except Exception as e:
-
-            st.error(f"Error guardando dataset: {e}")
-
-
-
-
-dataset_info.py
-import streamlit as st
-import pandas as pd
-
-
-def render_dataset_info():
-
-    st.title("📊 Dataset Analytics")
-
-    if "connector" not in st.session_state:
-
-        st.warning(
-            "No hay dataset cargado"
-        )
-
-        return
-
-    connector = st.session_state["connector"]
-
-    # 🔥 dataframe REAL
-    df = connector.preview(limit=100000)
-
-    st.markdown("---")
-
-    # =========================
-    # GENERAL
-    # =========================
-
-    st.subheader(
-        "📌 Información General"
-    )
-
-    col1, col2, col3, col4 = st.columns(4)
-
-    col1.metric(
-        "Rows",
-        len(df)
-    )
-
-    col2.metric(
-        "Columns",
-        len(df.columns)
-    )
-
-    col3.metric(
-        "Missing",
-        int(df.isna().sum().sum())
-    )
-
-    memory_mb = round(
-        df.memory_usage(deep=True).sum()
-        / 1024 / 1024,
-        2
-    )
-
-    col4.metric(
-        "Memory MB",
-        memory_mb
-    )
-
-    st.markdown("---")
-
-    # =========================
-    # SCHEMA
-    # =========================
-
-    st.subheader(
-        "🧬 Schema"
-    )
-
-    schema_df = pd.DataFrame({
-
-        "column": df.columns,
-
-        "dtype": df.dtypes.astype(str),
-
-        "nulls": df.isna().sum().values,
-
-        "unique": df.nunique().values
-    })
-
-    st.dataframe(
-        schema_df,
-        use_container_width=True
-    )
-
-    st.markdown("---")
-
-    # =========================
-    # NUMERIC
-    # =========================
-
-    numeric_df = df.select_dtypes(
-        include="number"
-    )
-
-    if not numeric_df.empty:
-
-        st.subheader(
-            "📈 Numeric Analytics"
-        )
-
-        stats = pd.DataFrame({
-
-            "mean": numeric_df.mean(),
-
-            "median": numeric_df.median(),
-
-            "std": numeric_df.std(),
-
-            "min": numeric_df.min(),
-
-            "max": numeric_df.max(),
-
-            "missing": numeric_df.isna().sum()
-        })
-
-        st.dataframe(
-            stats.round(2),
-            use_container_width=True
-        )
-
-        st.bar_chart(
-            numeric_df.mean()
-        )
-
-    st.markdown("---")
-
-    # =========================
-    # CATEGORICAL
-    # =========================
-
-    cat_df = df.select_dtypes(
-        exclude="number"
-    )
-
-    if not cat_df.empty:
-
-        st.subheader(
-            "🏷 Variables categóricas"
-        )
-
-        for col in cat_df.columns[:5]:
-
-            st.markdown(f"### {col}")
-
-            vc = (
-                cat_df[col]
-                .astype(str)
-                .value_counts()
-                .head(10)
-            )
-
-            st.bar_chart(vc)
-
-    st.markdown("---")
-
-    # =========================
-    # CORRELATION
-    # =========================
-
-    if len(numeric_df.columns) > 1:
-
-        st.subheader(
-            "🔥 Correlaciones"
-        )
-
-        corr = numeric_df.corr(
-            numeric_only=True
-        )
-
-        st.dataframe(
-            corr.round(2),
-            use_container_width=True
-        )
-
-    st.markdown("---")
-
-    # =========================
-    # RAW
-    # =========================
-
-    st.subheader("📄 Raw Data")
-
-    st.dataframe(
-        df.head(100),
-        use_container_width=True
-    )
-
-datasets.py
-import streamlit as st
-import os
-
-from connectors.factory import create_connector
-
-DATA_PATH = "data"
-
-
-# =========================
-# HELPERS
-# =========================
-
-def detect_file_type(file):
-
-    if file.endswith(".csv"):
-        return "csv"
-
-    elif file.endswith(".xlsx"):
-        return "excel"
-
-    return None
-
-
-def load_dataset(file, file_path):
-
-    file_type = detect_file_type(file)
-
-    if not file_type:
-        raise ValueError(
-            "Formato no soportado"
-        )
-
-    connector = create_connector(
-        file_type,
-        {"file_path": file_path}
-    )
-
-    st.session_state["connector"] = connector
-
-    st.session_state["file_path"] = file_path
-
-    st.session_state["dataset_id"] = file
-
-    return connector
-
-
-# =========================
-# PAGE
-# =========================
-
-def render_datasets():
-
-    st.title("📚 Gestión de Datasets")
-
-    # -------------------------
-    # VALIDATE FOLDER
-    # -------------------------
-    if not os.path.exists(DATA_PATH):
-
-        st.info(
-            "No hay datasets todavía"
-        )
-
-        return
-
-    # -------------------------
-    # FILES
-    # -------------------------
-    files = sorted(
-        os.listdir(DATA_PATH),
-        reverse=True
-    )
-
-    if not files:
-
-        st.info(
-            "No hay datasets guardados"
-        )
-
-        return
-
-    st.markdown("---")
-
-    # -------------------------
-    # LOOP
-    # -------------------------
-    for file in files:
-
-        file_path = os.path.join(
-            DATA_PATH,
-            file
-        )
-
-        # 🔥 5 columnas ahora
-        col1, col2, col3, col4, col5 = st.columns(
-            [4, 1, 1, 1, 1]
-        )
-
-        # ==================================================
-        # FILE NAME
-        # ==================================================
-        with col1:
-
-            st.write(f"📄 {file}")
-
-            current_file = st.session_state.get(
-                "file_path"
-            )
-
-            if current_file == file_path:
-
-                st.caption(
-                    "🟢 Dataset activo"
-                )
-
-        # ==================================================
-        # LOAD
-        # ==================================================
-        with col2:
-
-            if st.button(
-                "Cargar",
-                key=f"load_{file}"
-            ):
-
-                try:
-
-                    load_dataset(
-                        file,
-                        file_path
-                    )
-
-                    st.success(
-                        f"✅ Dataset activo: {file}"
-                    )
-
-                    st.rerun()
-
-                except Exception as e:
-
-                    st.error(
-                        f"Error cargando dataset: {e}"
-                    )
-
-        # ==================================================
-        # EDIT
-        # ==================================================
-        with col3:
-
-            if st.button(
-                "Editar",
-                key=f"edit_{file}"
-            ):
-
-                try:
-
-                    load_dataset(
-                        file,
-                        file_path
-                    )
-
-                    st.session_state.page = (
-                        "dataset_editor"
-                    )
-
-                    st.rerun()
-
-                except Exception as e:
-
-                    st.error(
-                        f"Error editor: {e}"
-                    )
-
-        # ==================================================
-        # INFO
-        # ==================================================
-        with col4:
-
-            if st.button(
-                "📊 Info",
-                key=f"info_{file}"
-            ):
-
-                try:
-
-                    load_dataset(
-                        file,
-                        file_path
-                    )
-
-                    st.session_state.page = (
-                        "dataset_info"
-                    )
-
-                    st.rerun()
-
-                except Exception as e:
-
-                    st.error(
-                        f"Error info: {e}"
-                    )
-
-        # ==================================================
-        # DELETE
-        # ==================================================
-        with col5:
-
-            if st.button(
-                "🗑️",
-                key=f"delete_{file}"
-            ):
-
-                try:
-
-                    os.remove(file_path)
-
-                    current_file = st.session_state.get(
-                        "file_path"
-                    )
-
-                    if current_file == file_path:
-
-                        st.session_state["connector"] = None
-
-                        st.session_state["file_path"] = None
-
-                        st.session_state["dataset_id"] = None
-
-                        st.session_state[
-                            "semantic_layer"
-                        ] = None
-
-                    st.warning(
-                        f"🗑️ {file} eliminado"
-                    )
-
-                    st.rerun()
-
-                except Exception as e:
-
-                    st.error(
-                        f"Error eliminando: {e}"
-                    )
-
-        # ==================================================
-        # PREVIEW
-        # ==================================================
-        with st.expander(
-            f"Preview: {file}"
-        ):
-
-            try:
 
                 connector = create_connector(
-                    detect_file_type(file),
-                    {"file_path": file_path}
+                    "csv",
+                    {"file_path": save_path}
                 )
 
-                preview = connector.preview()
+                st.session_state["connector"] = connector
+                st.session_state["file_path"] = save_path
+                st.session_state["dataset_id"] = file_name
 
-                st.dataframe(
-                    preview,
-                    use_container_width=True
+                st.success(
+                    f"Dataset guardado: {file_name}"
                 )
 
-            except Exception as e:
-
-                st.error(
-                    f"Error preview: {e}"
-                )
-
-forecast.py
-import streamlit as st
-import os
-
-from ui.pages.dataset_editor import (
-    load_schema,
-    apply_column_types
-)
-
-from ui.components.forecast.forecast_builder import (
-    build_forecast_config
-)
-
-from ui.components.forecast.forecast_renderer import (
-    render_forecast_chart
-)
+                st.rerun()
 
 
-def render_forecast():
 
-    st.title("📉 Forecast")
+llm_parser_service.py
+import pandas as pd
+import json
+import re
 
-    connector = st.session_state.get("connector")
 
-    if not connector:
+class OCRLLMParserService:
 
-        st.warning("Primero cargá un dataset")
-        return
+    def clean_json(self, response):
 
-    file_path = st.session_state.get("file_path")
+        response = response.strip()
+        response = response.replace("```json", "")
+        response = response.replace("```", "")
 
-    if not file_path:
-
-        st.warning("No hay dataset activo")
-        return
-
-    file_name = os.path.basename(file_path)
-
-    try:
-
-        df = connector.preview(100000)
-
-        schema = load_schema(file_name)
-
-        df = apply_column_types(
-            df,
-            schema
+        match = re.search(
+            r"\[.*\]",
+            response,
+            re.DOTALL
         )
 
-    except Exception as e:
-
-        st.error(f"Error cargando dataset: {e}")
-        return
-
-    config = build_forecast_config(df)
-
-    render_forecast_chart(
-        df,
-        config
-    )
-
-ml.py
-import streamlit as st
-
-def render_ml():
-
-    st.title("🤖 Machine Learning")
-
-    tabs = st.tabs(["📉 Churn", "📈 Forecast"])
-
-    with tabs[0]:
-        st.button("Entrenar churn")
-
-    with tabs[1]:
-        st.button("Predecir")
-
-
-
-ranking.py
-import streamlit as st
-
-def render_ranking():
-
-    st.title("🏆 Ranking & Queries")
-
-    tabs = st.tabs([
-        "🔝 Top",
-        "🔻 Bottom",
-        "⚖️ Comparación"
-    ])
-
-    # -------------------------
-    # TOP
-    # -------------------------
-    with tabs[0]:
-        st.selectbox("Métrica", ["ventas", "clientes"])
-        st.number_input("Cantidad", 1, 100, 10)
-        st.button("Ejecutar Top")
-
-    # -------------------------
-    # BOTTOM
-    # -------------------------
-    with tabs[1]:
-        st.selectbox("Métrica", ["ventas", "clientes"])
-        st.number_input("Cantidad", 1, 100, 10, key="bottom_n")
-        st.button("Ejecutar Bottom")
-
-    # -------------------------
-    # COMPARISON
-    # -------------------------
-    with tabs[2]:
-        st.text_input("Entidad A")
-        st.text_input("Entidad B")
-        st.button("Comparar")
-
-        st.markdown("---")
-        st.subheader("Resultado")
-        st.info("Resultado comparativo")
-
-recent.py
-import streamlit as st
-
-def render_recents():
-
-    st.title("🕓 Conversaciones recientes")
-
-    tabs = st.tabs([
-        "📜 Historial",
-        "⭐ Favoritas",
-        "🧹 Gestión"
-    ])
-
-    queries = st.session_state.get("recent_queries", [])
-
-    # =========================
-    # 📜 HISTORIAL
-    # =========================
-    with tabs[0]:
-
-        st.subheader("Últimas consultas")
-
-        if not queries:
-            st.info("No hay consultas todavía")
-        else:
-            for i, q in enumerate(queries):
-
-                col1, col2 = st.columns([4,1])
-
-                with col1:
-                    st.write(q)
-
-                with col2:
-                    if st.button("Abrir", key=f"rec_open_{i}"):
-                        st.session_state.page = "chat"
-                        st.session_state.prefill_question = q
-
-    # =========================
-    # ⭐ FAVORITAS
-    # =========================
-    with tabs[1]:
-
-        st.subheader("Consultas guardadas")
-        st.info("No hay favoritas todavía")
-
-    # =========================
-    # 🧹 GESTIÓN
-    # =========================
-    with tabs[2]:
-
-        st.subheader("Administrar historial")
-
-        if st.button("🗑️ Borrar historial completo"):
-            st.session_state.recent_queries = []
-            st.success("Historial eliminado")
-
-        st.markdown("---")
-
-        for i, q in enumerate(queries):
-
-            col1, col2 = st.columns([4,1])
-
-            with col1:
-                st.write(q)
-
-            with col2:
-                if st.button("❌", key=f"rec_delete_{i}"):
-                    st.session_state.recent_queries.pop(i)
-                    st.rerun()
-
-semantic.py
-import streamlit as st
-from semantic.semantic_layer import build_semantic_layer
-from semantic.utils import save_semantic_layer
-
-def render_semantic():
-
-    st.title("🧠 Capa Semántica")
-
-    if "connector" not in st.session_state:
-        st.warning("Primero cargá un dataset")
-        return
-
-    connector = st.session_state["connector"]
-    columns = list(connector.preview().columns)
-
-    # -------------------------
-    # INIT SI NO EXISTE
-    # -------------------------
-    if "semantic_layer" not in st.session_state or st.session_state["semantic_layer"] is None:
-
-        st.session_state["semantic_layer"] = build_semantic_layer(columns)
-
-    sl = st.session_state["semantic_layer"]
-
-    tabs = st.tabs([
-        "🔤 Aliases",
-        "📊 Métricas",
-        "🧪 Test"
-    ])
-
-    # -------------------------
-    # 🔤 ALIASES
-    # -------------------------
-    with tabs[0]:
-
-        st.subheader("Aliases por columna")
-
-        for col in columns:
-
-            current = sl["aliases"].get(col, [])
-
-            key = f"alias_{col}"
-
-            if key not in st.session_state:
-                st.session_state[key] = ", ".join(current)
-
-            value = st.text_input(f"{col}", key=key)
-
-            sl["aliases"][col] = [v.strip() for v in value.split(",") if v]
-
-    # -------------------------
-    # 📊 METRICS
-    # -------------------------
-    with tabs[1]:
-
-        st.subheader("Métricas")
-
-        for k, v in list(sl["metrics"].items()):
-
-            key = f"metric_{k}"
-
-            if key not in st.session_state:
-                st.session_state[key] = v
-
-            new_val = st.text_input(k, key=key)
-            sl["metrics"][k] = new_val
-
-        st.markdown("### ➕ Nueva métrica")
-
-        new_name = st.text_input("Nombre métrica")
-        new_expr = st.text_input("SQL")
-
-        if st.button("Agregar métrica"):
-            if new_name and new_expr:
-                sl["metrics"][new_name] = new_expr
-                st.success(f"✅ {new_name} agregada")
-
-    # -------------------------
-    # 🧪 TEST (simple)
-    # -------------------------
-    with tabs[2]:
-
-        st.subheader("Test rápido")
-
-        st.json(sl)
-
-    # -------------------------
-    # SAVE
-    # -------------------------
-    if st.button("💾 Guardar capa semántica"):
-
-        save_semantic_layer(
-            st.session_state["dataset_id"],
-            sl
+        if match:
+            return match.group(0)
+
+        return response
+
+    def parse_to_dataframe(
+        self,
+        raw_text,
+        columns,
+        examples,
+        context,
+        llm
+    ):
+
+        if not columns:
+            return pd.DataFrame({
+                "error": ["No columns"]
+            })
+
+        prompt = f"""
+Extraé dataset estructurado.
+
+CONTEXTO:
+{context}
+
+TEXTO OCR:
+{raw_text}
+
+COLUMNAS:
+{", ".join(columns)}
+
+EJEMPLOS:
+{examples}
+
+REGLAS:
+- devolver SOLO JSON
+- no inventar
+- null si falta
+"""
+
+        response = llm.generate(
+            prompt=prompt,
+            system_prompt="OCR parser"
         )
 
-        st.success("✅ Guardado")
+        cleaned = self.clean_json(response)
 
-    # persistencia final
-    st.session_state["semantic_layer"] = sl
+        try:
+            return pd.DataFrame(json.loads(cleaned))
+
+        except Exception:
+            return pd.DataFrame({
+                "raw_output": [response]
+            })
+
+
+paddleocr_service.py
+import tempfile
+from paddleocr import PaddleOCR
+
+
+class OCRService:
+
+    def __init__(self):
+
+        self.ocr = PaddleOCR(
+            use_angle_cls=True,
+            lang="en"
+        )
+
+    def extract_text(self, file_bytes):
+
+        with tempfile.NamedTemporaryFile(
+            delete=False,
+            suffix=".png"
+        ) as f:
+
+            f.write(file_bytes)
+            temp_path = f.name
+
+        result = self.ocr.ocr(temp_path)
+
+        lines = []
+
+        for page in result:
+            for item in page:
+
+                text = item[1][0]
+                score = item[1][1]
+
+                if score > 0.4:
+                    lines.append(text)
+
+        return "\n".join(lines)
+
+
+
+
