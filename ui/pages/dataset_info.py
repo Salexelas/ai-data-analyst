@@ -1,187 +1,137 @@
 import streamlit as st
 import pandas as pd
 
+from dataset_editor.adapters.pandas_adapter import PandasAdapter
+
+
+adapter = PandasAdapter()
+
 
 def render_dataset_info():
 
     st.title("📊 Dataset Analytics")
 
-    if "connector" not in st.session_state:
+    file_path = st.session_state.get("file_path")
 
-        st.warning(
-            "No hay dataset cargado"
-        )
-
+    if not file_path:
+        st.warning("No hay dataset cargado")
         return
 
-    connector = st.session_state["connector"]
+    try:
+        # muestra razonable para análisis UI
+        df = adapter.load_preview(file_path, limit=5000)
 
-    # 🔥 dataframe REAL
-    df = connector.preview(limit=100000)
+    except Exception as e:
+        st.error(f"Error cargando dataset: {e}")
+        return
 
-    st.markdown("---")
+    numeric_df = df.select_dtypes(include="number")
+    cat_df = df.select_dtypes(exclude="number")
 
-    # =========================
+    tabs = st.tabs([
+        "📌 General",
+        "🧬 Schema",
+        "📈 Numérico",
+        "🏷 Categórico",
+        "🔥 Correlaciones",
+        "📄 Raw"
+    ])
+
     # GENERAL
-    # =========================
+    with tabs[0]:
 
-    st.subheader(
-        "📌 Información General"
-    )
+        col1, col2, col3, col4 = st.columns(4)
 
-    col1, col2, col3, col4 = st.columns(4)
+        col1.metric("Rows (sample)", len(df))
+        col2.metric("Columns", len(df.columns))
+        col3.metric("Missing", int(df.isna().sum().sum()))
 
-    col1.metric(
-        "Rows",
-        len(df)
-    )
-
-    col2.metric(
-        "Columns",
-        len(df.columns)
-    )
-
-    col3.metric(
-        "Missing",
-        int(df.isna().sum().sum())
-    )
-
-    memory_mb = round(
-        df.memory_usage(deep=True).sum()
-        / 1024 / 1024,
-        2
-    )
-
-    col4.metric(
-        "Memory MB",
-        memory_mb
-    )
-
-    st.markdown("---")
-
-    # =========================
-    # SCHEMA
-    # =========================
-
-    st.subheader(
-        "🧬 Schema"
-    )
-
-    schema_df = pd.DataFrame({
-
-        "column": df.columns,
-
-        "dtype": df.dtypes.astype(str),
-
-        "nulls": df.isna().sum().values,
-
-        "unique": df.nunique().values
-    })
-
-    st.dataframe(
-        schema_df,
-        use_container_width=True
-    )
-
-    st.markdown("---")
-
-    # =========================
-    # NUMERIC
-    # =========================
-
-    numeric_df = df.select_dtypes(
-        include="number"
-    )
-
-    if not numeric_df.empty:
-
-        st.subheader(
-            "📈 Numeric Analytics"
+        memory_mb = round(
+            df.memory_usage(deep=True).sum() / 1024 / 1024,
+            2
         )
 
-        stats = pd.DataFrame({
+        col4.metric("Memory MB", memory_mb)
 
-            "mean": numeric_df.mean(),
+    # SCHEMA
+    with tabs[1]:
 
-            "median": numeric_df.median(),
-
-            "std": numeric_df.std(),
-
-            "min": numeric_df.min(),
-
-            "max": numeric_df.max(),
-
-            "missing": numeric_df.isna().sum()
+        schema_df = pd.DataFrame({
+            "column": df.columns,
+            "dtype": df.dtypes.astype(str),
+            "nulls": df.isna().sum().values,
+            "unique": df.nunique().values
         })
 
         st.dataframe(
-            stats.round(2),
+            schema_df,
             use_container_width=True
         )
 
-        st.bar_chart(
-            numeric_df.mean()
-        )
+    # NUMERIC
+    with tabs[2]:
 
-    st.markdown("---")
+        if numeric_df.empty:
+            st.info("No hay columnas numéricas")
 
-    # =========================
-    # CATEGORICAL
-    # =========================
+        else:
 
-    cat_df = df.select_dtypes(
-        exclude="number"
-    )
+            stats = pd.DataFrame({
+                "mean": numeric_df.mean(),
+                "median": numeric_df.median(),
+                "std": numeric_df.std(),
+                "min": numeric_df.min(),
+                "max": numeric_df.max(),
+                "missing": numeric_df.isna().sum()
+            })
 
-    if not cat_df.empty:
-
-        st.subheader(
-            "🏷 Variables categóricas"
-        )
-
-        for col in cat_df.columns[:5]:
-
-            st.markdown(f"### {col}")
-
-            vc = (
-                cat_df[col]
-                .astype(str)
-                .value_counts()
-                .head(10)
+            st.dataframe(
+                stats.round(2),
+                use_container_width=True
             )
 
-            st.bar_chart(vc)
+            st.bar_chart(numeric_df.mean())
 
-    st.markdown("---")
+    # CATEGORICAL
+    with tabs[3]:
 
-    # =========================
+        if cat_df.empty:
+            st.info("No hay columnas categóricas")
+
+        else:
+
+            for col in cat_df.columns[:5]:
+
+                st.subheader(col)
+
+                vc = (
+                    cat_df[col]
+                    .astype(str)
+                    .value_counts()
+                    .head(10)
+                )
+
+                st.bar_chart(vc)
+
     # CORRELATION
-    # =========================
+    with tabs[4]:
 
-    if len(numeric_df.columns) > 1:
+        if len(numeric_df.columns) <= 1:
+            st.info("No hay suficientes columnas numéricas")
 
-        st.subheader(
-            "🔥 Correlaciones"
-        )
+        else:
 
-        corr = numeric_df.corr(
-            numeric_only=True
-        )
+            corr = numeric_df.corr(numeric_only=True)
+
+            st.dataframe(
+                corr.round(2),
+                use_container_width=True
+            )
+
+    # RAW
+    with tabs[5]:
 
         st.dataframe(
-            corr.round(2),
+            df.head(100),
             use_container_width=True
         )
-
-    st.markdown("---")
-
-    # =========================
-    # RAW
-    # =========================
-
-    st.subheader("📄 Raw Data")
-
-    st.dataframe(
-        df.head(100),
-        use_container_width=True
-    )
