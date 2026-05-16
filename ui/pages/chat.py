@@ -56,6 +56,43 @@ def render_chat():
             or st.session_state["audio_prompt"]
         )
 
+        # ==================================================
+        # 🔥 CARGAR DATASETS REALES
+        # ==================================================
+
+        import os
+
+        DATA_PATH = "data"
+
+        available_datasets = sorted(os.listdir(DATA_PATH)) if os.path.exists(DATA_PATH) else []
+
+        st.session_state["available_datasets"] = available_datasets
+
+        # ==================================================
+        # 📚 EXPANDER
+        # ==================================================
+
+        st.markdown("---")
+
+        with st.expander("📚 Datasets disponibles", expanded=False):
+
+            selected_datasets = []
+
+            for ds in available_datasets:
+
+                default_checked = ds == st.session_state.get("dataset_id")
+
+                checked = st.checkbox(
+                    ds,
+                    value=default_checked,
+                    key=f"ds_{ds}"
+                )
+
+                if checked:
+                    selected_datasets.append(ds)
+
+            st.session_state["selected_datasets"] = selected_datasets
+            
         col1, col2 = st.columns([1, 1])
 
         with col1:
