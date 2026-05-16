@@ -1,4 +1,4 @@
-import streamlit as st
+'''import streamlit as st
 from connectors.factory import create_connector
 from semantic.utils import get_dataset_id, load_semantic_layer
 
@@ -59,4 +59,4 @@ def render_source_selector():
             st.session_state["semantic_layer"] = loaded
             st.info("📂 Capa semántica cargada")
 
-        st.success("✅ Conectado")
+        st.success("✅ Conectado")'''

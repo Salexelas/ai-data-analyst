@@ -47,10 +47,12 @@ ForEach-Object -Begin {$file=""} -Process {
 
 //////////////////////// obtener estructura (tree)//////////////////////////////////
 
-Get-ChildItem -Directory | Where-Object { $_.Name -ne "venv" } | ForEach-Object {
+Get-ChildItem -Path . | Where-Object { $_.Name -ne "venv" -and $_.Name -ne "__pycache__" } | ForEach-Object {
     $_.Name
-    Get-ChildItem $_.FullName | Where-Object { $_.Name -ne "__pycache__" } | ForEach-Object {
-        "  " + $_.Name
+    if ($_.PSIsContainer) {
+        Get-ChildItem $_.FullName -Recurse | Where-Object { $_.Name -ne "__pycache__" } | ForEach-Object {
+            "  " + $_.FullName.Replace((Get-Location).Path + "\", "")
+        }
     }
 } > estructura.txt
 

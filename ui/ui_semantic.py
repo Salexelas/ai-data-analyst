@@ -1,4 +1,4 @@
-import streamlit as st
+'''import streamlit as st
 
 from semantic.semantic_layer import build_semantic_layer, merge_semantic_layers
 from semantic.semantic_agent import generate_semantic_suggestions
@@ -122,4 +122,4 @@ def render_semantic_ui(connector):
             )
             st.success("✅ Guardado")
 
-        st.session_state["semantic_layer"] = sl
+        st.session_state["semantic_layer"] = sl'''

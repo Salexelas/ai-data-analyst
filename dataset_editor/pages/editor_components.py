@@ -2,6 +2,9 @@ import os
 import streamlit as st
 
 from dataset_editor.services.type_service import TYPE_OPTIONS
+from dataset_editor.services.transform_service import TransformService
+
+transform_service = TransformService()
 
 
 def validate_dataset():
@@ -102,12 +105,72 @@ def render_types_tab(service, df, schema):
 
 def render_data_tab(df):
 
-    return st.data_editor(
-        df,
+    llm = st.session_state.get("llm")
+
+    if "edited_df" not in st.session_state:
+        st.session_state["edited_df"] = df.copy()
+
+    edited_df = st.data_editor(
+        st.session_state["edited_df"],
         use_container_width=True,
         num_rows="dynamic",
-        height=600
+        height=500,
+        key="data_editor"
     )
+
+    st.session_state["edited_df"] = edited_df
+
+    st.divider()
+    st.subheader("🧹 Transformar columna con IA")
+
+    selected_col = st.selectbox(
+        "Columna",
+        edited_df.columns,
+        key="transform_column"
+    )
+
+    instruction = st.text_input(
+        "Instrucción",
+        placeholder="Ej: en la columna Team donde diga GSW pone Golden State Warriors"
+    )
+
+    if st.button("👀 Vista previa transformación"):
+
+        preview_df = transform_service.preview_transform(
+            edited_df,
+            selected_col,
+            instruction,
+            llm
+        )
+
+        st.session_state["transform_preview"] = preview_df
+
+    if "transform_preview" in st.session_state:
+
+        st.write("Preview:")
+        st.dataframe(
+            st.session_state["transform_preview"],
+            use_container_width=True
+        )
+
+        if st.button("✅ Aplicar transformación"):
+
+            preview_df = st.session_state["transform_preview"]
+
+            edited_df = transform_service.apply_transform(
+                edited_df,
+                selected_col,
+                preview_df
+            )
+
+            st.session_state["edited_df"] = edited_df
+
+            del st.session_state["transform_preview"]
+
+            st.success("Transformación aplicada")
+            st.rerun()
+
+    return st.session_state["edited_df"]
 
 
 def save_changes(service, file_path, edited_df, rename_map, column_types):
@@ -130,6 +193,9 @@ def save_changes(service, file_path, edited_df, rename_map, column_types):
         )
 
         st.session_state["semantic_layer"] = None
+
+        if "edited_df" in st.session_state:
+            del st.session_state["edited_df"]
 
         st.success("✅ Dataset actualizado")
         st.rerun()
