@@ -7,7 +7,38 @@ from core.query_store import save_query
 from ui.components.audio_input import render_audio_input
 from renderers.streamlit_renderer import render_analytics
 
+import os
+from connectors.factory import create_connector
 
+DATA_PATH = "data"
+
+
+def switch_dataset(file_name: str):
+    file_path = os.path.join(DATA_PATH, file_name)
+
+    file_type = (
+        "csv" if file_name.endswith(".csv")
+        else "excel" if file_name.endswith(".xlsx")
+        else None
+    )
+
+    if not file_type:
+        return
+
+    connector = create_connector(
+        file_type,
+        {"file_path": file_path}
+    )
+
+    # 🔥 ESTE ES EL ESTADO CLAVE
+    st.session_state["connector"] = connector
+    st.session_state["file_path"] = file_path
+    st.session_state["dataset_id"] = file_name
+
+    # opcional pero recomendado
+    st.session_state["active_datasets"] = [file_name]
+
+    
 def render_chat():
 
     st.title("💬 Nueva conversación")
@@ -76,22 +107,24 @@ def render_chat():
 
         with st.expander("📚 Datasets disponibles", expanded=False):
 
-            selected_datasets = []
+            current = st.session_state.get("dataset_id")
 
             for ds in available_datasets:
 
-                default_checked = ds == st.session_state.get("dataset_id")
+                col1, col2 = st.columns([4, 1])
 
-                checked = st.checkbox(
-                    ds,
-                    value=default_checked,
-                    key=f"ds_{ds}"
-                )
+                with col1:
+                    st.write(ds)
 
-                if checked:
-                    selected_datasets.append(ds)
+                with col2:
+                    is_active = ds == current
 
-            st.session_state["selected_datasets"] = selected_datasets
+                    if is_active:
+                        st.success("Activo")
+                    else:
+                        if st.button("Cargar", key=f"switch_{ds}"):
+                            switch_dataset(ds)
+                            st.rerun()
             
         col1, col2 = st.columns([1, 1])
 

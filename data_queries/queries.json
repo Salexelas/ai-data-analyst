@@ -1,5 +1,40 @@
 [
   {
+    "question": "cuantos partidos ganados tienen los 3 primeros equipos, dame el nombre",
+    "dataset": "nbaStats - Hoja 1.csv",
+    "intent": null,
+    "ts": 1778967453.4816258,
+    "response": null
+  },
+  {
+    "question": "cuantos partidos ganados tienen los 3 primeros equipos",
+    "dataset": "nbaStats - Hoja 1.csv",
+    "intent": null,
+    "ts": 1778967441.4869714,
+    "response": null
+  },
+  {
+    "question": "3 equipo con mas partidos ganados",
+    "dataset": "nbaStats - Hoja 1.csv",
+    "intent": null,
+    "ts": 1778967412.7689793,
+    "response": null
+  },
+  {
+    "question": "3 equipo con mas victorias",
+    "dataset": "nbaStats - Hoja 1.csv",
+    "intent": null,
+    "ts": 1778967396.5576832,
+    "response": null
+  },
+  {
+    "question": "equipo con mas victorias",
+    "dataset": "nbaStats - Hoja 1.csv",
+    "intent": null,
+    "ts": 1778967376.8645108,
+    "response": null
+  },
+  {
     "question": "cuantas victorias tiene San Antonio Spurs",
     "dataset": "players.csv",
     "intent": null,
@@ -312,41 +347,6 @@
     "dataset": "EO.csv",
     "intent": null,
     "ts": 1778118245.5446393,
-    "response": null
-  },
-  {
-    "question": "por que via se vendieron mas AT301",
-    "dataset": "EO.csv",
-    "intent": null,
-    "ts": 1778118131.418304,
-    "response": null
-  },
-  {
-    "question": "cuantos at301 se vendieron?",
-    "dataset": "EO.csv",
-    "intent": null,
-    "ts": 1778117996.004867,
-    "response": null
-  },
-  {
-    "question": "cuales son los 5 equipos que tienen el mejor plus minus",
-    "dataset": "nbaStats - Hoja 1.csv",
-    "intent": null,
-    "ts": 1778117879.1904364,
-    "response": null
-  },
-  {
-    "question": "cuantos juegos jugo San antonio Spurs?",
-    "dataset": "nbaStats - Hoja 1.csv",
-    "intent": null,
-    "ts": 1778116562.1369562,
-    "response": null
-  },
-  {
-    "question": "5 equipos con mais puntos",
-    "dataset": null,
-    "intent": null,
-    "ts": 1778108224.4423115,
     "response": null
   }
 ]
