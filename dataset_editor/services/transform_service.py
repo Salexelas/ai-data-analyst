@@ -22,21 +22,13 @@ class TransformService:
 
         return response
 
-    def preview_transform(
+    def _transform_values(
         self,
-        df,
+        values,
         column,
         instruction,
         llm
     ):
-
-        sample = (
-            df[column]
-            .dropna()
-            .astype(str)
-            .head(20)
-            .tolist()
-        )
 
         prompt = f"""
 Transformá valores de una columna.
@@ -45,7 +37,7 @@ COLUMNA:
 {column}
 
 VALORES:
-{sample}
+{values}
 
 INSTRUCCIÓN:
 {instruction}
@@ -65,36 +57,70 @@ REGLAS:
 
         cleaned = self.clean_json(response)
 
+        return json.loads(cleaned)
+
+    def preview_transform(
+        self,
+        df,
+        column,
+        instruction,
+        llm
+    ):
+
+        sample = (
+            df[column]
+            .dropna()
+            .astype(str)
+            .head(20)
+            .tolist()
+        )
+
         try:
 
-            transformed = json.loads(cleaned)
+            transformed = self._transform_values(
+                sample,
+                column,
+                instruction,
+                llm
+            )
 
             return pd.DataFrame({
                 "original": sample,
                 "transformado": transformed
             })
 
-        except Exception:
+        except Exception as e:
 
             return pd.DataFrame({
-                "error": [response]
+                "error": [str(e)]
             })
 
     def apply_transform(
         self,
         df,
         column,
-        preview_df
+        instruction,
+        llm
     ):
 
-        mapping = dict(
-            zip(
-                preview_df["original"],
-                preview_df["transformado"]
-            )
+        df = df.copy()
+
+        values = (
+            df[column]
+            .dropna()
+            .astype(str)
+            .unique()
+            .tolist()
         )
 
-        df = df.copy()
+        transformed = self._transform_values(
+            values,
+            column,
+            instruction,
+            llm
+        )
+
+        mapping = dict(zip(values, transformed))
 
         df[column] = (
             df[column]
@@ -103,3 +129,5 @@ REGLAS:
         )
 
         return df
+
+

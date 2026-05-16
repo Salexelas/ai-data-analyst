@@ -1,5 +1,82 @@
 [
   {
+    "question": "cuantas victorias tiene San Antonio Spurs",
+    "dataset": "players.csv",
+    "intent": null,
+    "ts": 1778962894.5581336,
+    "response": null
+  },
+  {
+    "question": "cual es el promedio de edad de los jugadores de Oklahoma City Thunder y San antonio Spurs por separados",
+    "dataset": "players.csv",
+    "intent": null,
+    "ts": 1778962856.9868393,
+    "response": null
+  },
+  {
+    "question": "cual es el promedio de edad de los jugadores de Oklahoma City Thunder y San antonio Spurs",
+    "dataset": "players.csv",
+    "intent": null,
+    "ts": 1778962823.0774057,
+    "response": null
+  },
+  {
+    "question": "cual es el promedio de edad de los jugadores de Oklahoma City Thunder",
+    "dataset": "players.csv",
+    "intent": null,
+    "ts": 1778962795.3376114,
+    "response": null
+  },
+  {
+    "question": "cual es el promedio de edad de los jugadores de OKC",
+    "dataset": "players.csv",
+    "intent": null,
+    "ts": 1778962779.241734,
+    "response": null
+  },
+  {
+    "question": "cual es el promedio de edad de Oklahoma City Tunder",
+    "dataset": "players.csv",
+    "intent": null,
+    "ts": 1778962699.2269728,
+    "response": null
+  },
+  {
+    "question": "1 nombre del jugador y edad que hace mas puntos por partido",
+    "dataset": "players.csv",
+    "intent": null,
+    "ts": 1778961929.2038171,
+    "response": null
+  },
+  {
+    "question": "cual es el nombre del jugador y edad que hace mas puntos por partido",
+    "dataset": "players.csv",
+    "intent": null,
+    "ts": 1778961899.1552842,
+    "response": null
+  },
+  {
+    "question": "cual es la edad del player que hace mas puntos por partido",
+    "dataset": "players.csv",
+    "intent": null,
+    "ts": 1778961823.0820496,
+    "response": null
+  },
+  {
+    "question": "cual es la edad de el jugador que hace mas puntos por partido",
+    "dataset": "players.csv",
+    "intent": null,
+    "ts": 1778961799.4944444,
+    "response": null
+  },
+  {
+    "question": "cual es la edad de el jugador que hace mas puntos",
+    "dataset": "players.csv",
+    "intent": null,
+    "ts": 1778961786.012893,
+    "response": null
+  },
+  {
     "question": "jugadores con mas perdidas, cantidad",
     "dataset": "players.csv",
     "intent": null,
@@ -270,20 +347,6 @@
     "dataset": null,
     "intent": null,
     "ts": 1778108224.4423115,
-    "response": null
-  },
-  {
-    "question": "5equipos con mas puntos",
-    "dataset": null,
-    "intent": null,
-    "ts": 1778108176.0094848,
-    "response": null
-  },
-  {
-    "question": "4 equipos con mas puntos",
-    "dataset": null,
-    "intent": null,
-    "ts": 1778107986.3838143,
     "response": null
   }
 ]

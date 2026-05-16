@@ -1,3 +1,6 @@
+
+
+
 import os
 import streamlit as st
 
@@ -160,7 +163,8 @@ def render_data_tab(df):
             edited_df = transform_service.apply_transform(
                 edited_df,
                 selected_col,
-                preview_df
+                instruction,
+                llm
             )
 
             st.session_state["edited_df"] = edited_df
