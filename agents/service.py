@@ -1,19 +1,34 @@
 from core.query_context import QueryContext, InputContext
 from core.pipeline import Pipeline
 from agents.steps import *
+
 from core.observability import new_trace_id, log_event
 from core.responses import AnalyticsResponse
 
-
-# 🔥 NUEVO
 from cache import SimpleCache, build_cache_key
+from connectors.multi_connector import MultiDatasetConnector
+
 
 cache = SimpleCache(ttl=300)
 
 
-def answer_question(question, connector, dataset_id=None, semantic_layer=None, llm=None):
+def answer_question(
+    question,
+    dataset_ids,
+    dataset_relations=None,
+    semantic_layer=None,
+    llm=None
+):
 
     trace_id = new_trace_id()
+
+    # =========================
+    # MULTI DATASET CONNECTOR
+    # =========================
+    connector = MultiDatasetConnector(
+        dataset_ids,
+        relations=dataset_relations or []
+    )
 
     ctx = QueryContext(
         input=InputContext(
@@ -25,11 +40,15 @@ def answer_question(question, connector, dataset_id=None, semantic_layer=None, l
         trace_id=trace_id
     )
 
-    log_event("request_start", trace_id, question=question)
+    log_event(
+        "request_start",
+        trace_id,
+        question=question
+    )
 
-    # -------------------------
-    # 🔥 PIPELINE PARCIAL (ANTES DEL CACHE)
-    # -------------------------
+    # =========================
+    # PRE PIPELINE
+    # =========================
     pre_pipeline = Pipeline([
         ValidateStep(),
         DetectLanguageStep(),
@@ -38,15 +57,15 @@ def answer_question(question, connector, dataset_id=None, semantic_layer=None, l
 
     ctx = pre_pipeline.run(ctx)
 
-    # -------------------------
-    # 🔥 CACHE (AHORA SÍ BIEN)
-    # -------------------------
+    # =========================
+    # CACHE
+    # =========================
     cache_key = build_cache_key(
-        question,
-        dataset_id,
-        semantic_layer,
-        ctx.exec.intent,
-        ctx.exec.language
+        question=question,
+        dataset_id=sorted(dataset_ids),
+        semantic_layer=semantic_layer,
+        intent=ctx.exec.intent,
+        language=ctx.exec.language
     )
 
     cached = cache.get(cache_key)
@@ -57,9 +76,9 @@ def answer_question(question, connector, dataset_id=None, semantic_layer=None, l
 
     log_event("cache_miss", trace_id, key=cache_key)
 
-    # -------------------------
-    # RESTO PIPELINE
-    # -------------------------
+    # =========================
+    # MAIN PIPELINE
+    # =========================
     pipeline = Pipeline([
         LoadSchemaStep(),
         GenerateSQLStep(llm),
@@ -68,61 +87,63 @@ def answer_question(question, connector, dataset_id=None, semantic_layer=None, l
     ])
 
     try:
+
         ctx = pipeline.run(ctx)
 
         log_event(
             "request_success",
             trace_id,
-            rows=len(ctx.output.result) if ctx.output.result is not None else 0
+            rows=len(ctx.output.result)
+            if ctx.output.result is not None else 0
         )
 
-        # ⚠️ IMPORTANTE → copiar DF
         response = AnalyticsResponse(
             type="analytics",
-
             markdown=ctx.output.markdown,
-
             data=ctx.output.result.copy(),
-
             sql=ctx.exec.safe_sql,
-
             chart_type=ctx.output.chart_type,
-
             language=ctx.exec.language,
-
             metrics=ctx.output.metrics,
-
             severity=ctx.output.severity
         )
 
-        # -------------------------
-        # 🔥 GUARDAR CACHE
-        # -------------------------
         cache.set(cache_key, response)
-        log_event("cache_set", trace_id, key=cache_key)
+
+        log_event(
+            "cache_set",
+            trace_id,
+            key=cache_key
+        )
 
         return response
 
     except Exception as e:
 
-        log_event("request_error", trace_id, error=str(e))
+        log_event(
+            "request_error",
+            trace_id,
+            error=str(e)
+        )
 
         error_msg = str(e).lower()
-        print("❌ ERROR:", error_msg)
+
+        print("ERROR:", error_msg)
 
         if any(x in error_msg for x in [
             "sin resultados",
             "columnas inválidas",
-            "sql inválido"
+            "sql inválido",
+            "tabla inválida"
         ]):
-            return {
-                "type": "table",
-                "data": [],
-                "explanation": "No encontré resultados claros. Probá reformular la pregunta.",
-                "language": "es"
-            }
+            return AnalyticsResponse(
+                type="table",
+                data=[],
+                markdown="No encontré resultados claros. Probá reformular la pregunta."
+            )
 
-        return {
-            "type": "error",
-            "message": str(e)
-        }
+        return AnalyticsResponse(
+            type="error",
+            data=[],
+            markdown=f"Error: {str(e)}"
+        )

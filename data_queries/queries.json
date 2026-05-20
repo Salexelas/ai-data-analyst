@@ -1,5 +1,159 @@
 [
   {
+    "question": "promedio de edad de equipos con mas de 63 victorias",
+    "dataset": "nbaStats - Hoja 1.csv,players.csv",
+    "intent": null,
+    "ts": 1779243219.5541074,
+    "response": null
+  },
+  {
+    "question": "5 equipos con mas puntos",
+    "dataset": "nbaStats - Hoja 1.csv,players.csv",
+    "intent": null,
+    "ts": 1779243141.0255249,
+    "response": null
+  },
+  {
+    "question": "promedio de edad de equipo con mas de 63 victorias",
+    "dataset": "nbaStats - Hoja 1.csv,players.csv",
+    "intent": null,
+    "ts": 1779242112.2199173,
+    "response": null
+  },
+  {
+    "question": "decime 5 nombres de jugadores cuyo equipos haya ganado  60 partidos",
+    "dataset": "nbaStats - Hoja 1.csv,players.csv",
+    "intent": null,
+    "ts": 1779241536.1144137,
+    "response": null
+  },
+  {
+    "question": "decime 5 nombres de jugadores cuyo equipos haya ganado  62 partidos",
+    "dataset": "nbaStats - Hoja 1.csv,players.csv",
+    "intent": null,
+    "ts": 1779241524.1125557,
+    "response": null
+  },
+  {
+    "question": "decime 5 nombres de jugadores cuyo equipos haya ganado mas de 60 partidos",
+    "dataset": "nbaStats - Hoja 1.csv,players.csv",
+    "intent": null,
+    "ts": 1779241506.3618062,
+    "response": null
+  },
+  {
+    "question": "decime 5 nombres de jugadores cuyo equipos haya ganado mas de 63 partidos",
+    "dataset": "nbaStats - Hoja 1.csv,players.csv",
+    "intent": null,
+    "ts": 1779241481.4271953,
+    "response": null
+  },
+  {
+    "question": "promedio de edad de equipos con mas de 61 victorias",
+    "dataset": "nbaStats - Hoja 1.csv,players.csv",
+    "intent": null,
+    "ts": 1779241417.6896663,
+    "response": null
+  },
+  {
+    "question": "promedio de edad de equipos con mas de 60 victorias",
+    "dataset": "nbaStats - Hoja 1.csv,players.csv",
+    "intent": null,
+    "ts": 1779241295.0686274,
+    "response": null
+  },
+  {
+    "question": "que jugadores juegan en Detroit Pistons",
+    "dataset": "nbaStats - Hoja 1.csv,players.csv",
+    "intent": null,
+    "ts": 1779241260.7952282,
+    "response": null
+  },
+  {
+    "question": "promedio de edad del equipo con mas de 62 victorias",
+    "dataset": "nbaStats - Hoja 1.csv,players.csv",
+    "intent": null,
+    "ts": 1779159678.0242288,
+    "response": null
+  },
+  {
+    "question": "promedio de edad del equipo con mas de 59 victorias",
+    "dataset": "nbaStats - Hoja 1.csv,players.csv",
+    "intent": null,
+    "ts": 1779159616.1419122,
+    "response": null
+  },
+  {
+    "question": "promedio de edad del equipo con mas victorias ",
+    "dataset": "nbaStats - Hoja 1.csv,players.csv",
+    "intent": null,
+    "ts": 1779159588.3957293,
+    "response": null
+  },
+  {
+    "question": "promedio de edad del equipo con mas victoria, como se llama el equipo , y cuantas vitorias tuvo?",
+    "dataset": "nbaStats - Hoja 1.csv,players.csv",
+    "intent": null,
+    "ts": 1779159438.2965481,
+    "response": null
+  },
+  {
+    "question": "promedio de edad del equipos con mas victorias",
+    "dataset": "nbaStats - Hoja 1.csv,players.csv",
+    "intent": null,
+    "ts": 1779159263.748382,
+    "response": null
+  },
+  {
+    "question": "cual es el promedio de edad del equipo con mas victorias?",
+    "dataset": "nbaStats - Hoja 1.csv,players.csv",
+    "intent": null,
+    "ts": 1779158636.8633523,
+    "response": null
+  },
+  {
+    "question": "cual es el promedio del equipo con mas victorias?",
+    "dataset": "nbaStats - Hoja 1.csv,players.csv",
+    "intent": null,
+    "ts": 1779158621.917093,
+    "response": null
+  },
+  {
+    "question": "cual es el equipo con mas victorias?",
+    "dataset": "nbaStats - Hoja 1.csv,players.csv",
+    "intent": null,
+    "ts": 1779158591.452814,
+    "response": null
+  },
+  {
+    "question": "5 equipos con mas points",
+    "dataset": "nbaStats - Hoja 1.csv,players.csv",
+    "intent": null,
+    "ts": 1779158466.4814177,
+    "response": null
+  },
+  {
+    "question": "5 equipos con mas victorias",
+    "dataset": "nbaStats - Hoja 1.csv,players.csv",
+    "intent": null,
+    "ts": 1779157847.4522378,
+    "response": null
+  },
+  {
+    "question": "equipo con mas victorias",
+    "dataset": "nbaStats - Hoja 1.csv,players.csv",
+    "intent": null,
+    "ts": 1779157135.132192,
+    "response": null
+  },
+  {
+    "question": "5 jugadores con mas puntos",
+    "dataset": "players.csv",
+    "intent": null,
+    "ts": 1778981273.820559,
+    "response": null
+  },
+  {
     "question": "cuantos partidos ganados tienen los 3 primeros equipos, dame el nombre",
     "dataset": "nbaStats - Hoja 1.csv",
     "intent": null,
@@ -25,13 +179,6 @@
     "dataset": "nbaStats - Hoja 1.csv",
     "intent": null,
     "ts": 1778967396.5576832,
-    "response": null
-  },
-  {
-    "question": "equipo con mas victorias",
-    "dataset": "nbaStats - Hoja 1.csv",
-    "intent": null,
-    "ts": 1778967376.8645108,
     "response": null
   },
   {
@@ -200,153 +347,6 @@
     "dataset": "players.csv",
     "intent": null,
     "ts": 1778464082.210245,
-    "response": null
-  },
-  {
-    "question": "15 jugadores con peor net rating",
-    "dataset": "players.csv",
-    "intent": null,
-    "ts": 1778463915.4132998,
-    "response": null
-  },
-  {
-    "question": "5 jugadores con peor net rating",
-    "dataset": "players.csv",
-    "intent": null,
-    "ts": 1778463901.0052767,
-    "response": null
-  },
-  {
-    "question": "cual es el jugador con el peor net rating?",
-    "dataset": "players.csv",
-    "intent": null,
-    "ts": 1778463878.0522525,
-    "response": null
-  },
-  {
-    "question": "2 equipos con mas puntos",
-    "dataset": "nbaStats - Hoja 1.csv",
-    "intent": null,
-    "ts": 1778460814.3838913,
-    "response": null
-  },
-  {
-    "question": "5 equipos con mas puntos",
-    "dataset": "nbaStats - Hoja 1.csv",
-    "intent": null,
-    "ts": 1778460773.6871367,
-    "response": null
-  },
-  {
-    "question": "5 equipos con mas puntso, rebotes y asistencias",
-    "dataset": "nbaStats - Hoja 1.csv",
-    "intent": null,
-    "ts": 1778454647.0652196,
-    "response": null
-  },
-  {
-    "question": "5 equipos con mas puntso",
-    "dataset": "nbaStats - Hoja 1.csv",
-    "intent": null,
-    "ts": 1778454599.3037653,
-    "response": null
-  },
-  {
-    "question": "I would like to know what is the teen with more rebounds.",
-    "dataset": "nbaStats - Hoja 1.csv",
-    "intent": null,
-    "ts": 1778279872.3597271,
-    "response": null
-  },
-  {
-    "question": "3 equipos cn mas puntos",
-    "dataset": "nbaStats - Hoja 1.csv",
-    "intent": null,
-    "ts": 1778279854.3698034,
-    "response": null
-  },
-  {
-    "question": "5 equipos con más puntos",
-    "dataset": "nbaStats - Hoja 1.csv",
-    "intent": null,
-    "ts": 1778279655.1421795,
-    "response": null
-  },
-  {
-    "question": "tipo de producto mas vendido",
-    "dataset": "EO.csv",
-    "intent": null,
-    "ts": 1778118611.8548853,
-    "response": null
-  },
-  {
-    "question": "cual es el tipo de prodcuto mas vendido?",
-    "dataset": "EO.csv",
-    "intent": null,
-    "ts": 1778118565.5357969,
-    "response": null
-  },
-  {
-    "question": "cual es el tipo de producto mas vendido",
-    "dataset": "EO.csv",
-    "intent": null,
-    "ts": 1778118526.2327826,
-    "response": null
-  },
-  {
-    "question": "cual es el tipo de producto mas vendido?",
-    "dataset": "EO.csv",
-    "intent": null,
-    "ts": 1778118520.6694796,
-    "response": null
-  },
-  {
-    "question": "cuales son los 3 tipos de juegos mas vendidos",
-    "dataset": "EO.csv",
-    "intent": null,
-    "ts": 1778118423.1719577,
-    "response": null
-  },
-  {
-    "question": "cuales son los tipos de juegos mas vendidos, dame el contador",
-    "dataset": "EO.csv",
-    "intent": null,
-    "ts": 1778118399.8279135,
-    "response": null
-  },
-  {
-    "question": "cuales son los tipos de juegos mas vendidos",
-    "dataset": "EO.csv",
-    "intent": null,
-    "ts": 1778118384.7499588,
-    "response": null
-  },
-  {
-    "question": "cuales son los tipos de juegos que mas se vendieron ",
-    "dataset": "EO.csv",
-    "intent": null,
-    "ts": 1778118369.0557284,
-    "response": null
-  },
-  {
-    "question": "que tipo de juegos se vendieron mas",
-    "dataset": "EO.csv",
-    "intent": null,
-    "ts": 1778118333.9624493,
-    "response": null
-  },
-  {
-    "question": "que tipos de jeugos se vendieron mas",
-    "dataset": "EO.csv",
-    "intent": null,
-    "ts": 1778118299.5766394,
-    "response": null
-  },
-  {
-    "question": "cuantos productos se vendieron en total?",
-    "dataset": "EO.csv",
-    "intent": null,
-    "ts": 1778118245.5446393,
     "response": null
   }
 ]

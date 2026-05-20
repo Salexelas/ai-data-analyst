@@ -14,7 +14,9 @@ def should_retry(error: str):
         "columnas inválidas",
         "tabla inválida",
         "solo select",
-        "demasiados joins"
+        "demasiados joins",
+        "expecting value",
+        "invalid json: empty response"
     ]
 
     return any(x in error for x in retryable)
@@ -28,6 +30,7 @@ def generate_sql_with_retry(
     llm,
     language="en",
     intent=None,
+    relationships=None,
     max_retries=2
 ):
 
@@ -44,12 +47,13 @@ def generate_sql_with_retry(
             if previous_output is None:
 
                 parsed = generate_sql_structured(
-                    question,
-                    schema,
-                    semantic_layer,
-                    llm,
-                    language,
-                    intent=intent
+                    question=question,
+                    schema=schema,
+                    semantic_layer=semantic_layer,
+                    llm=llm,
+                    language=language,
+                    intent=intent,
+                    relationships=relationships
                 )
 
             else:
@@ -71,6 +75,9 @@ Semantic Layer:
 Intent:
 {intent}
 
+Relationships:
+{relationships}
+
 Previous output:
 {previous_output}
 
@@ -79,6 +86,8 @@ Error:
 
 Rules:
 - Keep same intent
+- Use relationships if JOIN is needed
+- Preserve entity granularity
 - Do not invent columns
 - Fix ONLY the error
 - Return ONLY valid JSON
@@ -95,7 +104,15 @@ Format:
                     system_prompt="You fix SQL queries"
                 )
 
-                parsed = json.loads(raw)
+                raw = raw.strip()
+
+                if not raw:
+                    raise ValueError("Invalid JSON")
+
+                raw = raw.replace("```json", "").replace("```", "").strip()
+
+                decoder = json.JSONDecoder()
+                parsed, _ = decoder.raw_decode(raw)
 
             # -------------------------
             # 2. EXTRAER SQL
@@ -114,7 +131,19 @@ Format:
             # -------------------------
             # 4. 🔥 GUARD DENTRO DEL RETRY
             # -------------------------
-            safe_sql = guard_sql(sql, columns)
+            tables = schema["table_name"].unique().tolist()
+
+            print("\nTABLAS DISPONIBLES:")
+            print(tables)
+
+            print("\nSQL GENERADO:")
+            print(sql)
+
+            safe_sql = guard_sql(
+                sql,
+                columns,
+                allowed_tables=tables
+            )
 
             # ✅ si pasa el guard, terminamos
             return safe_sql

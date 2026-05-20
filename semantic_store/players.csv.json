@@ -5,7 +5,7 @@
     "Team",
     "Age",
     "GP",
-    "W",
+    "Player Win",
     "L",
     "Min",
     "PTS",
@@ -29,7 +29,7 @@
     "FP",
     "DD2",
     "TD3",
-    "#ERROR!"
+    "netRating"
   ],
   "aliases": {
     "Unnamed: 0": [],
@@ -37,7 +37,9 @@
     "Team": [],
     "Age": [],
     "GP": [],
-    "W": [],
+    "Player Win": [
+      "victorias propias del jugador"
+    ],
     "L": [],
     "Min": [],
     "PTS": [],
@@ -61,9 +63,7 @@
     "FP": [],
     "DD2": [],
     "TD3": [],
-    "#ERROR!": [
-      "netRating"
-    ]
+    "netRating": []
   },
   "metrics": {}
 }

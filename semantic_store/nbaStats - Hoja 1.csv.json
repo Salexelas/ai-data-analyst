@@ -33,7 +33,9 @@
     "Unnamed: 0": [],
     "Team": [],
     "GP": [],
-    "W": [],
+    "W": [
+      "Victorias por equipo"
+    ],
     "L": [],
     "WIN%": [],
     "Min": [],
@@ -57,9 +59,7 @@
     "BLKA": [],
     "PF": [],
     "PFD": [],
-    "net_margin": [
-      "plus minus"
-    ]
+    "net_margin": []
   },
   "metrics": {}
 }

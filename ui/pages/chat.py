@@ -1,3 +1,4 @@
+import os
 import streamlit as st
 
 from services.speech.loader import load_whisper
@@ -6,9 +7,6 @@ from core.query_store import save_query
 
 from ui.components.audio_input import render_audio_input
 from renderers.streamlit_renderer import render_analytics
-
-import os
-from connectors.factory import create_connector
 
 DATA_PATH = "data"
 
@@ -25,20 +23,26 @@ def switch_dataset(file_name: str):
     if not file_type:
         return
 
-    connector = create_connector(
-        file_type,
-        {"file_path": file_path}
-    )
-
-    # 🔥 ESTE ES EL ESTADO CLAVE
-    st.session_state["connector"] = connector
+    # mantener dataset activo para UI
     st.session_state["file_path"] = file_path
     st.session_state["dataset_id"] = file_name
 
-    # opcional pero recomendado
-    st.session_state["active_datasets"] = [file_name]
+    # multi selección
+    if "active_datasets" not in st.session_state:
+        st.session_state["active_datasets"] = []
 
-    
+    if file_name not in st.session_state["active_datasets"]:
+        st.session_state["active_datasets"].append(file_name)
+
+
+def remove_dataset(file_name: str):
+    if "active_datasets" not in st.session_state:
+        return
+
+    if file_name in st.session_state["active_datasets"]:
+        st.session_state["active_datasets"].remove(file_name)
+
+
 def render_chat():
 
     st.title("💬 Nueva conversación")
@@ -57,7 +61,7 @@ def render_chat():
         )
 
         text_prompt = st.text_input(
-            "Consulta sobre dataset",
+            "Consulta sobre datasets",
             value=default_q
         )
 
@@ -69,7 +73,6 @@ def render_chat():
         if audio and "bytes" in audio:
 
             with st.spinner("🎧 Transcribiendo..."):
-
                 transcription = load_whisper().transcribe(
                     audio["bytes"]
                 )
@@ -77,7 +80,6 @@ def render_chat():
             st.session_state["audio_prompt"] = transcription
 
         if st.session_state["audio_prompt"]:
-
             st.info(
                 f"🎤 {st.session_state['audio_prompt']}"
             )
@@ -87,58 +89,159 @@ def render_chat():
             or st.session_state["audio_prompt"]
         )
 
-        # ==================================================
-        # 🔥 CARGAR DATASETS REALES
-        # ==================================================
+        # ==========================================
+        # DATASETS DISPONIBLES
+        # ==========================================
 
-        import os
-
-        DATA_PATH = "data"
-
-        available_datasets = sorted(os.listdir(DATA_PATH)) if os.path.exists(DATA_PATH) else []
-
-        st.session_state["available_datasets"] = available_datasets
-
-        # ==================================================
-        # 📚 EXPANDER
-        # ==================================================
+        available_datasets = (
+            sorted(os.listdir(DATA_PATH))
+            if os.path.exists(DATA_PATH)
+            else []
+        )
 
         st.markdown("---")
 
         with st.expander("📚 Datasets disponibles", expanded=False):
 
-            current = st.session_state.get("dataset_id")
+            active = st.session_state.get(
+                "active_datasets",
+                []
+            )
 
             for ds in available_datasets:
 
-                col1, col2 = st.columns([4, 1])
+                col1, col2, col3 = st.columns([4, 1, 1])
 
                 with col1:
                     st.write(ds)
 
                 with col2:
-                    is_active = ds == current
-
-                    if is_active:
+                    if ds in active:
                         st.success("Activo")
                     else:
-                        if st.button("Cargar", key=f"switch_{ds}"):
+                        if st.button(
+                            "Agregar",
+                            key=f"add_{ds}"
+                        ):
                             switch_dataset(ds)
                             st.rerun()
-            
+
+                with col3:
+                    if ds in active:
+                        if st.button(
+                            "Quitar",
+                            key=f"remove_{ds}"
+                        ):
+                            remove_dataset(ds)
+                            st.rerun()
+
+        # ==========================================
+        # DATASETS ACTIVOS
+        # ==========================================
+
+        active = st.session_state.get(
+            "active_datasets",
+            []
+        )
+
+        if active:
+            st.info(
+                "Datasets activos: " + ", ".join(active)
+            )
+            # ==========================================
+            # RELACIONES ENTRE DATASETS
+            # ==========================================
+
+            if len(active) >= 2:
+
+                st.markdown("### 🔗 Relacionar datasets")
+
+                if "dataset_relations" not in st.session_state:
+                    st.session_state["dataset_relations"] = []
+
+                selected_left = st.selectbox(
+                    "Dataset izquierdo",
+                    active,
+                    key="rel_left_ds"
+                )
+
+                selected_right = st.selectbox(
+                    "Dataset derecho",
+                    [d for d in active if d != selected_left],
+                    key="rel_right_ds"
+                )
+
+                # -------------------------
+                # leer columnas reales
+                # -------------------------
+                import pandas as pd
+
+                left_path = os.path.join(DATA_PATH, selected_left)
+                right_path = os.path.join(DATA_PATH, selected_right)
+
+                left_cols = pd.read_csv(left_path, nrows=1).columns.tolist()
+                right_cols = pd.read_csv(right_path, nrows=1).columns.tolist()
+
+                left_col = st.selectbox(
+                    "Columna izquierda",
+                    left_cols,
+                    key="rel_left_col"
+                )
+
+                right_col = st.selectbox(
+                    "Columna derecha",
+                    right_cols,
+                    key="rel_right_col"
+                )
+
+                if st.button("Agregar relación"):
+
+                    relation = {
+                        "left_dataset": selected_left,
+                        "left_column": left_col,
+                        "right_dataset": selected_right,
+                        "right_column": right_col
+                    }
+
+                    st.session_state["dataset_relations"].append(
+                        relation
+                    )
+
+                    st.success("Relación agregada")
+                    st.rerun()
+
+                # mostrar relaciones
+                if st.session_state["dataset_relations"]:
+
+                    st.markdown("### Relaciones activas")
+
+                    for i, rel in enumerate(
+                        st.session_state["dataset_relations"]
+                    ):
+
+                        st.write(
+                            f"{rel['left_dataset']}.{rel['left_column']} "
+                            f"↔ "
+                            f"{rel['right_dataset']}.{rel['right_column']}"
+                        )
+        else:
+            st.warning("No hay datasets seleccionados")
+
+        st.markdown("---")
+
         col1, col2 = st.columns([1, 1])
 
         with col1:
 
             if st.button("Ejecutar"):
 
-                if "connector" not in st.session_state:
-
-                    st.error("Primero cargá un dataset")
+                if not active:
+                    st.error(
+                        "Seleccioná al menos un dataset"
+                    )
                     return
 
                 if not question:
-
                     st.warning("Ingresá una pregunta")
                     return
 
@@ -148,7 +251,6 @@ def render_chat():
                 )
 
                 if question not in st.session_state["recent_queries"]:
-
                     st.session_state["recent_queries"].insert(
                         0,
                         question
@@ -156,9 +258,7 @@ def render_chat():
 
                 save_query(
                     question,
-                    dataset_id=st.session_state.get(
-                        "dataset_id"
-                    ),
+                    dataset_id=",".join(active),
                     intent=None
                 )
 
@@ -166,8 +266,8 @@ def render_chat():
 
                     response = answer_question(
                         question=question,
-                        connector=st.session_state["connector"],
-                        dataset_id=st.session_state.get("dataset_id"),
+                        dataset_ids=active,
+                        dataset_relations=st.session_state.get("dataset_relations", []),
                         semantic_layer=st.session_state.get("semantic_layer"),
                         llm=st.session_state["llm"]
                     )
@@ -188,21 +288,28 @@ def render_chat():
 
         st.markdown("---")
 
-        response = st.session_state.get("last_response")
+        response = st.session_state.get(
+            "last_response"
+        )
 
         if response:
 
-            if response.type == "error":
-                st.error(response.message)
+            if hasattr(response, "type") and response.type == "error":
+                st.error(response.markdown)
+
             else:
                 render_analytics(response)
 
         else:
-            st.info("Todavía no ejecutaste ninguna consulta")
+            st.info(
+                "Todavía no ejecutaste ninguna consulta"
+            )
 
     with tabs[1]:
         st.markdown("### 🔀 Comparar datasets")
-        st.info("Próximamente 🚧")
+        st.info(
+            "Ahora podés seleccionar varios datasets en la pestaña Chat."
+        )
 
     with tabs[2]:
         st.markdown("### 📈 Opciones de vista")

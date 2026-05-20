@@ -2,10 +2,13 @@ import sqlglot
 from sqlglot import exp
 
 from core.settings import SQLConfig
-from core.constants import ALLOWED_TABLE
 
 
-def guard_sql(query: str, schema_columns: list) -> str:
+def guard_sql(
+    query: str,
+    schema_columns: list,
+    allowed_tables: list = None
+) -> str:
 
     if not query:
         raise ValueError("Empty query")
@@ -25,17 +28,36 @@ def guard_sql(query: str, schema_columns: list) -> str:
         raise ValueError("Solo SELECT permitido")
 
     # -------------------------
-    # TABLA
+    # TABLAS REALES
     # -------------------------
-    tables = {t.name for t in parsed.find_all(exp.Table)}
-    if tables != {ALLOWED_TABLE}:
-        raise ValueError("Tabla inválida")
+    if allowed_tables:
+
+        used_tables = {
+            t.name.lower()
+            for t in parsed.find_all(exp.Table)
+        }
+
+        valid_tables = {
+            t.lower()
+            for t in allowed_tables
+        }
+
+        invalid_tables = used_tables - valid_tables
+
+        if invalid_tables:
+            raise ValueError(f"Tabla inválida: {invalid_tables}")
 
     # -------------------------
     # COLUMNAS
     # -------------------------
-    used_columns = {c.name for c in parsed.find_all(exp.Column)}
-    invalid = used_columns - set(schema_columns)
+    used_columns = {
+        c.name
+        for c in parsed.find_all(exp.Column)
+    }
+
+    valid_columns = set(schema_columns)
+
+    invalid = used_columns - valid_columns
 
     if invalid:
         raise ValueError(f"Columnas inválidas: {invalid}")
@@ -55,12 +77,16 @@ def guard_sql(query: str, schema_columns: list) -> str:
         raise ValueError("Demasiados JOINs")
 
     # -------------------------
-    # LIMIT FORZADO
+    # LIMIT AUTO
     # -------------------------
     if not parsed.args.get("limit"):
         parsed.set(
             "limit",
-            exp.Limit(expression=exp.Literal.number(SQLConfig.MAX_ROWS))
+            exp.Limit(
+                expression=exp.Literal.number(
+                    SQLConfig.MAX_ROWS
+                )
+            )
         )
 
     return parsed.sql()

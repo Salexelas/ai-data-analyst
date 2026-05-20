@@ -4,7 +4,7 @@
     "Team": "text",
     "Age": "number",
     "GP": "number",
-    "W": "number",
+    "Player Win": "number",
     "L": "number",
     "Min": "number",
     "PTS": "number",
