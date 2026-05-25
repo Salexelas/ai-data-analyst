@@ -1,5 +1,68 @@
 [
   {
+    "question": "proemdio de edad de los jugadores con menos de 24 victorias",
+    "dataset": "TeamStats2026.csv,players2026.csv",
+    "intent": null,
+    "ts": 1779246459.830797,
+    "response": null
+  },
+  {
+    "question": "proemdio de edad de los jugadores con mas de 59 victorias",
+    "dataset": "TeamStats2026.csv,players2026.csv",
+    "intent": null,
+    "ts": 1779246434.5884798,
+    "response": null
+  },
+  {
+    "question": "p`roemdio de edad de equipos con mas de 59 victorias",
+    "dataset": "TeamStats2026.csv,players2026.csv",
+    "intent": null,
+    "ts": 1779246396.6808093,
+    "response": null
+  },
+  {
+    "question": "promedio de edad total de los equipos con menos de 23 victorias",
+    "dataset": "TeamStats2026.csv,players2026.csv",
+    "intent": null,
+    "ts": 1779246363.4306264,
+    "response": null
+  },
+  {
+    "question": "promedio de edad de los equipos con menos de 23 victorias",
+    "dataset": "TeamStats2026.csv,players2026.csv",
+    "intent": null,
+    "ts": 1779246311.5764227,
+    "response": null
+  },
+  {
+    "question": "promedio de edad de los 5 equipos con menos victorias",
+    "dataset": "TeamStats2026.csv,players2026.csv",
+    "intent": null,
+    "ts": 1779246293.0198698,
+    "response": null
+  },
+  {
+    "question": "5 equipos con menos victorias",
+    "dataset": "TeamStats2026.csv,players2026.csv",
+    "intent": null,
+    "ts": 1779246231.8478386,
+    "response": null
+  },
+  {
+    "question": "promedio de edad de equipos con mas de 59 victorias",
+    "dataset": "TeamStats2026.csv,players2026.csv",
+    "intent": null,
+    "ts": 1779246154.179908,
+    "response": null
+  },
+  {
+    "question": "equipos con mas de 59 victorias",
+    "dataset": "TeamStats2026.csv,players2026.csv",
+    "intent": null,
+    "ts": 1779246114.0550506,
+    "response": null
+  },
+  {
     "question": "promedio de edad de equipos con mas de 63 victorias",
     "dataset": "nbaStats - Hoja 1.csv,players.csv",
     "intent": null,
@@ -284,69 +347,6 @@
     "dataset": "players.csv",
     "intent": null,
     "ts": 1778712686.8921947,
-    "response": null
-  },
-  {
-    "question": "cuales son los 3 equipos con el promedio de edad mas bajo",
-    "dataset": "players.csv",
-    "intent": null,
-    "ts": 1778464525.9620044,
-    "response": null
-  },
-  {
-    "question": "cual es el promedio de los los 3 equipos que tienen el promedio de edad mas alto",
-    "dataset": "players.csv",
-    "intent": null,
-    "ts": 1778464501.13263,
-    "response": null
-  },
-  {
-    "question": "cuales son los 3 equipos que tienen el promedio de edad mas alto, y cual es el promedio",
-    "dataset": "players.csv",
-    "intent": null,
-    "ts": 1778464465.3041086,
-    "response": null
-  },
-  {
-    "question": "cuales son los 3 equipos que tienen el promedio de edad mas alto",
-    "dataset": "players.csv",
-    "intent": null,
-    "ts": 1778464450.758978,
-    "response": null
-  },
-  {
-    "question": "cual son las edades de los jugadores de SAS",
-    "dataset": "players.csv",
-    "intent": null,
-    "ts": 1778464372.515723,
-    "response": null
-  },
-  {
-    "question": "cual es el promedio de edad de los jugadores de SAS?",
-    "dataset": "players.csv",
-    "intent": null,
-    "ts": 1778464344.9176965,
-    "response": null
-  },
-  {
-    "question": "cual es el promedio de edad de san antonio spurs",
-    "dataset": "players.csv",
-    "intent": null,
-    "ts": 1778464261.3968453,
-    "response": null
-  },
-  {
-    "question": "de que equipo son los jugadores con mejor net rating? decime 2 equipos y sus jugadores",
-    "dataset": "players.csv",
-    "intent": null,
-    "ts": 1778464125.1230285,
-    "response": null
-  },
-  {
-    "question": "de que euipo son los jugadores con mejor net rating? ",
-    "dataset": "players.csv",
-    "intent": null,
-    "ts": 1778464082.210245,
     "response": null
   }
 ]

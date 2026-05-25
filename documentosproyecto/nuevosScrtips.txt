@@ -1,0 +1,1497 @@
+
+filters.py
+import unicodedata
+import re
+
+def normalize_query_for_intent(text: str):
+    text = normalize(text)  # ya tenés esto
+
+    replacements = {
+        "más": "mas",
+        "top": "top",
+        "mayores": "top",
+        "mejores": "top",
+        "peores": "bottom",
+        "menos": "bottom"
+    }
+
+    tokens = text.split()
+    tokens = [replacements.get(t, t) for t in tokens]
+
+    return " ".join(tokens)
+
+
+def fuzzy_match_score(q, term):
+    q_tokens = set(q.split())
+    t_tokens = set(term.split())
+
+    if not t_tokens:
+        return 0
+
+    overlap = len(q_tokens & t_tokens)
+    return overlap / len(t_tokens)
+
+def normalize(text):
+    text = text.lower()
+    text = unicodedata.normalize("NFKD", text)
+    text = "".join(c for c in text if not unicodedata.combining(c))
+    text = re.sub(r"[^a-z0-9\s]", "", text)
+    return text
+
+
+def is_match(q, term):
+    return term in q or q in term
+
+
+def token_overlap(a, b):
+    a_tokens = set(a.split())
+    b_tokens = set(b.split())
+    return len(a_tokens & b_tokens) > 0
+
+
+def is_valid_question_basic(question: str):
+    q = question.strip().lower()
+
+    if len(q) < 3:
+        return False
+
+    if not any(c.isalpha() for c in q):
+        return False
+
+    return True
+
+
+def is_question_related_fast(question, semantic_layer):
+
+    if not semantic_layer:
+        return True
+
+    q = normalize(question)
+
+    terms = []
+
+    # metrics
+    terms += list(semantic_layer.get("metrics", {}).keys())
+
+    # aliases
+    for v in semantic_layer.get("aliases", {}).values():
+        if isinstance(v, list):
+            terms += v
+        else:
+            terms.append(v)
+
+    # ?? fallback real
+    terms += semantic_layer.get("columns", [])
+
+    terms = [normalize(t) for t in terms]
+
+    def match_score(q, term):
+        q_tokens = set(q.split())
+        t_tokens = set(term.split())
+
+        if not t_tokens:
+            return 0
+
+        coverage = len(q_tokens & t_tokens) / len(t_tokens)
+        substring = 1 if term in q else 0
+
+        return coverage + 0.3 * substring
+
+    return any(match_score(q, t) >= 0.5 for t in terms)
+
+
+def detect_language_fast(text):
+    text = text.lower()
+
+    scores = {
+        "es": 0,
+        "en": 0,
+        "pt": 0,
+        "de": 0,
+        "fr": 0,
+        "it": 0
+    }
+
+    lang_keywords = {
+        "es": ["el", "la", "los", "las", "de", "que", "en", "y", "para", "con", "por", "estadisticas", "equipo"],
+        "en": ["the", "is", "are", "of", "and", "in", "for", "with", "stats", "team"],
+        "pt": ["o", "a", "os", "as", "de", "que", "em", "para", "com", "estatisticas", "equipe"],
+        "de": ["der", "die", "das", "und", "ist", "in", "für", "mit", "statistik", "mannschaft"],
+        "fr": ["le", "la", "les", "de", "et", "est", "dans", "pour", "avec", "statistiques", "equipe"],
+        "it": ["il", "lo", "la", "gli", "le", "di", "e", "è", "per", "con", "statistiche", "squadra"]
+    }
+
+    tokens = text.split()
+
+    for lang, keywords in lang_keywords.items():
+        for token in tokens:
+            if token in keywords:
+                scores[lang] += 1
+
+    best_lang = max(scores, key=scores.get)
+
+    if scores[best_lang] == 0:
+        return "en"
+
+    return best_lang
+
+
+
+
+
+
+
+intent_detector.py
+
+import unicodedata
+import re
+
+def normalize_query_for_intent(text: str):
+    text = normalize(text)  # ya tenés esto
+
+    replacements = {
+        "más": "mas",
+        "top": "top",
+        "mayores": "top",
+        "mejores": "top",
+        "peores": "bottom",
+        "menos": "bottom"
+    }
+
+    tokens = text.split()
+    tokens = [replacements.get(t, t) for t in tokens]
+
+    return " ".join(tokens)
+
+
+def fuzzy_match_score(q, term):
+    q_tokens = set(q.split())
+    t_tokens = set(term.split())
+
+    if not t_tokens:
+        return 0
+
+    overlap = len(q_tokens & t_tokens)
+    return overlap / len(t_tokens)
+
+def normalize(text):
+    text = text.lower()
+    text = unicodedata.normalize("NFKD", text)
+    text = "".join(c for c in text if not unicodedata.combining(c))
+    text = re.sub(r"[^a-z0-9\s]", "", text)
+    return text
+
+
+def is_match(q, term):
+    return term in q or q in term
+
+
+def token_overlap(a, b):
+    a_tokens = set(a.split())
+    b_tokens = set(b.split())
+    return len(a_tokens & b_tokens) > 0
+
+
+def is_valid_question_basic(question: str):
+    q = question.strip().lower()
+
+    if len(q) < 3:
+        return False
+
+    if not any(c.isalpha() for c in q):
+        return False
+
+    return True
+
+
+def is_question_related_fast(question, semantic_layer):
+
+    if not semantic_layer:
+        return True
+
+    q = normalize(question)
+
+    terms = []
+
+    # metrics
+    terms += list(semantic_layer.get("metrics", {}).keys())
+
+    # aliases
+    for v in semantic_layer.get("aliases", {}).values():
+        if isinstance(v, list):
+            terms += v
+        else:
+            terms.append(v)
+
+    # ?? fallback real
+    terms += semantic_layer.get("columns", [])
+
+    terms = [normalize(t) for t in terms]
+
+    def match_score(q, term):
+        q_tokens = set(q.split())
+        t_tokens = set(term.split())
+
+        if not t_tokens:
+            return 0
+
+        coverage = len(q_tokens & t_tokens) / len(t_tokens)
+        substring = 1 if term in q else 0
+
+        return coverage + 0.3 * substring
+
+    return any(match_score(q, t) >= 0.5 for t in terms)
+
+
+def detect_language_fast(text):
+    text = text.lower()
+
+    scores = {
+        "es": 0,
+        "en": 0,
+        "pt": 0,
+        "de": 0,
+        "fr": 0,
+        "it": 0
+    }
+
+    lang_keywords = {
+        "es": ["el", "la", "los", "las", "de", "que", "en", "y", "para", "con", "por", "estadisticas", "equipo"],
+        "en": ["the", "is", "are", "of", "and", "in", "for", "with", "stats", "team"],
+        "pt": ["o", "a", "os", "as", "de", "que", "em", "para", "com", "estatisticas", "equipe"],
+        "de": ["der", "die", "das", "und", "ist", "in", "für", "mit", "statistik", "mannschaft"],
+        "fr": ["le", "la", "les", "de", "et", "est", "dans", "pour", "avec", "statistiques", "equipe"],
+        "it": ["il", "lo", "la", "gli", "le", "di", "e", "è", "per", "con", "statistiche", "squadra"]
+    }
+
+    tokens = text.split()
+
+    for lang, keywords in lang_keywords.items():
+        for token in tokens:
+            if token in keywords:
+                scores[lang] += 1
+
+    best_lang = max(scores, key=scores.get)
+
+    if scores[best_lang] == 0:
+        return "en"
+
+    return best_lang
+
+
+
+
+
+
+service.py
+from core.query_context import QueryContext, InputContext
+from core.pipeline import Pipeline
+from agents.steps import *
+
+from core.observability import new_trace_id, log_event
+from core.responses import AnalyticsResponse
+
+from cache import SimpleCache, build_cache_key
+from connectors.multi_connector import MultiDatasetConnector
+
+
+cache = SimpleCache(ttl=300)
+
+
+def answer_question(
+    question,
+    dataset_ids,
+    dataset_relations=None,
+    semantic_layer=None,
+    llm=None
+):
+
+    trace_id = new_trace_id()
+
+    # =========================
+    # MULTI DATASET CONNECTOR
+    # =========================
+    connector = MultiDatasetConnector(
+        dataset_ids,
+        relations=dataset_relations or []
+    )
+
+    ctx = QueryContext(
+        input=InputContext(
+            question=question,
+            connector=connector,
+            semantic_layer=semantic_layer,
+            llm=llm
+        ),
+        trace_id=trace_id
+    )
+
+    log_event(
+        "request_start",
+        trace_id,
+        question=question
+    )
+
+    # =========================
+    # PRE PIPELINE
+    # =========================
+    pre_pipeline = Pipeline([
+        ValidateStep(),
+        DetectLanguageStep(),
+        IntentStep(llm),
+    ])
+
+    ctx = pre_pipeline.run(ctx)
+
+    # =========================
+    # CACHE
+    # =========================
+    cache_key = build_cache_key(
+        question=question,
+        dataset_id=sorted(dataset_ids),
+        semantic_layer=semantic_layer,
+        intent=ctx.exec.intent,
+        language=ctx.exec.language
+    )
+
+    cached = cache.get(cache_key)
+
+    if cached:
+        log_event("cache_hit", trace_id, key=cache_key)
+        return cached
+
+    log_event("cache_miss", trace_id, key=cache_key)
+
+    # =========================
+    # MAIN PIPELINE
+    # =========================
+    pipeline = Pipeline([
+        LoadSchemaStep(),
+        GenerateSQLStep(llm),
+        ExecuteSQLStep(),
+        InsightStep(llm)
+    ])
+
+    try:
+
+        ctx = pipeline.run(ctx)
+
+        log_event(
+            "request_success",
+            trace_id,
+            rows=len(ctx.output.result)
+            if ctx.output.result is not None else 0
+        )
+
+        response = AnalyticsResponse(
+            type="analytics",
+            markdown=ctx.output.markdown,
+            data=ctx.output.result.copy(),
+            sql=ctx.exec.safe_sql,
+            chart_type=ctx.output.chart_type,
+            language=ctx.exec.language,
+            metrics=ctx.output.metrics,
+            severity=ctx.output.severity
+        )
+
+        cache.set(cache_key, response)
+
+        log_event(
+            "cache_set",
+            trace_id,
+            key=cache_key
+        )
+
+        return response
+
+    except Exception as e:
+
+        log_event(
+            "request_error",
+            trace_id,
+            error=str(e)
+        )
+
+        error_msg = str(e).lower()
+
+        print("ERROR:", error_msg)
+
+        if any(x in error_msg for x in [
+            "sin resultados",
+            "columnas inválidas",
+            "sql inválido",
+            "tabla inválida"
+        ]):
+            return AnalyticsResponse(
+                type="table",
+                data=[],
+                markdown="No encontré resultados claros. Probá reformular la pregunta."
+            )
+
+        return AnalyticsResponse(
+            type="error",
+            data=[],
+            markdown=f"Error: {str(e)}"
+        )
+
+
+
+
+
+sql_generator.py
+import json
+
+
+class LLMOutputFormatError(Exception):
+    pass
+
+
+def build_prompt(
+    question,
+    schema,
+    semantic_layer,
+    intent=None,
+    language="en",
+    relationships=None
+):
+
+    available_tables = ", ".join(
+        schema["table_name"].unique()
+    )
+
+    intent_text = ""
+    if intent:
+        intent_text = f"""
+Intent:
+Type: {intent.get("intent")}
+Metric: {intent.get("metric")}
+Dimension: {intent.get("dimension")}
+Limit: {intent.get("limit")}
+"""
+
+    semantic_text = ""
+    if semantic_layer:
+        semantic_text = f"""
+Semantic Layer:
+Aliases: {semantic_layer.get("aliases")}
+Metrics: {semantic_layer.get("metrics")}
+Columns: {semantic_layer.get("columns")}
+"""
+
+    relationships_text = ""
+    if relationships:
+        relationships_text = f"""
+Relationships:
+{json.dumps(relationships, indent=2)}
+
+IMPORTANT:
+- Use these relationships when JOIN is required.
+- Preserve requested entity granularity.
+- If relation is one_to_many or many_to_many, aggregate after JOIN.
+- Avoid duplicated rows.
+- Never duplicate entities due to JOIN.
+"""
+
+    return f"""
+Return ONLY valid JSON.
+
+Format:
+{{
+  "sql": "string",
+  "confidence": float
+}}
+
+Rules:
+- Only SELECT
+- Use ONLY columns from schema
+- No explanation
+- No markdown
+- Respect intent
+- Use JOIN only when necessary
+
+INTENT:
+- top -> ORDER BY DESC
+- bottom -> ORDER BY ASC
+- average -> AVG()
+- total -> SUM()
+
+Available tables:
+{available_tables}
+
+{intent_text}
+
+Schema:
+{schema.to_dict(orient="records")}
+
+{semantic_text}
+
+{relationships_text}
+
+Question:
+{question}
+"""
+
+
+def validate_llm_output(parsed):
+
+    if not isinstance(parsed, dict):
+        raise LLMOutputFormatError("Output is not a JSON object")
+
+    if "sql" not in parsed:
+        raise LLMOutputFormatError("Missing 'sql' field")
+
+    if not isinstance(parsed["sql"], str):
+        raise LLMOutputFormatError("SQL must be string")
+
+
+def generate_sql_structured(
+    question,
+    schema,
+    semantic_layer,
+    llm,
+    language="en",
+    intent=None,
+    relationships=None
+):
+
+    prompt = build_prompt(
+        question=question,
+        schema=schema,
+        semantic_layer=semantic_layer,
+        intent=intent,
+        language=language,
+        relationships=relationships
+    )
+
+    raw = llm.generate(
+        prompt,
+        system_prompt="You are a senior data analyst. Return ONLY valid JSON."
+    )
+
+    if not raw or not raw.strip():
+        raise LLMOutputFormatError("Invalid JSON: empty response")
+
+    raw = raw.strip()
+    raw = raw.replace("```json", "").replace("```", "").strip()
+
+    try:
+        decoder = json.JSONDecoder()
+        parsed, _ = decoder.raw_decode(raw)
+
+    except Exception:
+        print("LLM RAW RESPONSE:")
+        print(raw)
+        raise LLMOutputFormatError(f"Invalid JSON: {raw}")
+
+    validate_llm_output(parsed)
+
+    return parsed
+
+
+
+sql_guard.py
+import sqlglot
+from sqlglot import exp
+
+from core.settings import SQLConfig
+
+
+def guard_sql(
+    query: str,
+    schema_columns: list,
+    allowed_tables: list = None
+) -> str:
+
+    if not query:
+        raise ValueError("Empty query")
+
+    # -------------------------
+    # Parse
+    # -------------------------
+    try:
+        parsed = sqlglot.parse_one(query)
+    except Exception:
+        raise ValueError("SQL inválido")
+
+    # -------------------------
+    # SOLO SELECT
+    # -------------------------
+    if not isinstance(parsed, exp.Select):
+        raise ValueError("Solo SELECT permitido")
+
+    # -------------------------
+    # TABLAS REALES
+    # -------------------------
+    if allowed_tables:
+
+        used_tables = {
+            t.name.lower()
+            for t in parsed.find_all(exp.Table)
+        }
+
+        valid_tables = {
+            t.lower()
+            for t in allowed_tables
+        }
+
+        invalid_tables = used_tables - valid_tables
+
+        if invalid_tables:
+            raise ValueError(f"Tabla inválida: {invalid_tables}")
+
+    # -------------------------
+    # COLUMNAS
+    # -------------------------
+    used_columns = {
+        c.name
+        for c in parsed.find_all(exp.Column)
+    }
+
+    valid_columns = set(schema_columns)
+
+    invalid = used_columns - valid_columns
+
+    if invalid:
+        raise ValueError(f"Columnas inválidas: {invalid}")
+
+    # -------------------------
+    # JOIN CONTROL
+    # -------------------------
+    join_count = 0
+
+    for join in parsed.find_all(exp.Join):
+        join_count += 1
+
+        if join.args.get("kind") == "cross":
+            raise ValueError("CROSS JOIN no permitido")
+
+    if join_count > SQLConfig.MAX_JOINS:
+        raise ValueError("Demasiados JOINs")
+
+    # -------------------------
+    # LIMIT AUTO
+    # -------------------------
+    if not parsed.args.get("limit"):
+        parsed.set(
+            "limit",
+            exp.Limit(
+                expression=exp.Literal.number(
+                    SQLConfig.MAX_ROWS
+                )
+            )
+        )
+
+    return parsed.sql()
+
+
+sql_retry.py
+import json
+from agents.sql_generator import generate_sql_structured
+from agents.sql_guard import guard_sql
+from agents.sql_generator import LLMOutputFormatError
+
+
+def should_retry(error: str):
+    error = error.lower()
+
+    retryable = [
+        "invalid json",
+        "missing 'sql'",
+        "sql inválido",
+        "columnas inválidas",
+        "tabla inválida",
+        "solo select",
+        "demasiados joins",
+        "expecting value",
+        "invalid json: empty response"
+    ]
+
+    return any(x in error for x in retryable)
+
+
+def generate_sql_with_retry(
+    question,
+    schema,
+    semantic_layer,
+    columns,
+    llm,
+    language="en",
+    intent=None,
+    relationships=None,
+    max_retries=2
+):
+
+    last_error = None
+    previous_output = None
+
+    for attempt in range(max_retries + 1):
+
+        try:
+
+            # -------------------------
+            # 1. GENERACIÓN
+            # -------------------------
+            if previous_output is None:
+
+                parsed = generate_sql_structured(
+                    question=question,
+                    schema=schema,
+                    semantic_layer=semantic_layer,
+                    llm=llm,
+                    language=language,
+                    intent=intent,
+                    relationships=relationships
+                )
+
+            else:
+                # ?? FIX INTELIGENTE (CON CONTEXTO REAL)
+                fix_prompt = f"""
+You generated an invalid SQL query.
+
+Fix it using the error.
+
+Context:
+Question: {question}
+
+Schema:
+{schema}
+
+Semantic Layer:
+{semantic_layer}
+
+Intent:
+{intent}
+
+Relationships:
+{relationships}
+
+Previous output:
+{previous_output}
+
+Error:
+{last_error}
+
+Rules:
+- Keep same intent
+- Use relationships if JOIN is needed
+- Preserve entity granularity
+- Do not invent columns
+- Fix ONLY the error
+- Return ONLY valid JSON
+
+Format:
+{{
+  "sql": "SELECT ...",
+  "confidence": 0.0-1.0
+}}
+"""
+
+                raw = llm.generate(
+                    fix_prompt,
+                    system_prompt="You fix SQL queries"
+                )
+
+                raw = raw.strip()
+
+                if not raw:
+                    raise ValueError("Invalid JSON")
+
+                raw = raw.replace("```json", "").replace("```", "").strip()
+
+                decoder = json.JSONDecoder()
+                parsed, _ = decoder.raw_decode(raw)
+
+            # -------------------------
+            # 2. EXTRAER SQL
+            # -------------------------
+            sql = parsed["sql"]
+
+            # -------------------------
+            # 3. VALIDACIÓN LIVIANA
+            # -------------------------
+            if "select" not in sql.lower():
+                raise ValueError("SQL inválido")
+
+            if len(sql) < 10:
+                raise ValueError("SQL demasiado corto")
+
+            # -------------------------
+            # 4. ?? GUARD DENTRO DEL RETRY
+            # -------------------------
+            tables = schema["table_name"].unique().tolist()
+
+            print("\nTABLAS DISPONIBLES:")
+            print(tables)
+
+            print("\nSQL GENERADO:")
+            print(sql)
+
+            safe_sql = guard_sql(
+                sql,
+                columns,
+                allowed_tables=tables
+            )
+
+            # ? si pasa el guard, terminamos
+            return safe_sql
+
+        except Exception as e:
+
+            last_error = str(e)
+
+            # ?? MUY IMPORTANTE: guardar salida previa SI existe
+            previous_output = parsed if 'parsed' in locals() else None
+
+            if not should_retry(last_error):
+                raise
+
+    raise ValueError(f"Failed after retries: {last_error}")
+
+
+
+
+
+
+steps.py
+from agents.filters import (
+    is_valid_question_basic,
+    is_question_related_fast,
+    detect_language_fast
+)
+
+from agents.intent_detector import detect_intent
+from core.observability import log_event
+from agents.sql_retry import generate_sql_with_retry
+from agents.sql_guard import guard_sql
+
+from tools.insight_prompt_builder import build_insight_prompt
+from tools.analytics_response_parser import parse_analytics_response
+
+
+class IntentStep:
+    name = "intent"
+
+    def __init__(self, llm):
+        self.llm = llm
+
+    def run(self, ctx):
+
+        intent = detect_intent(
+            ctx.input.question,
+            self.llm,
+            ctx.input.semantic_layer
+        )
+
+        ctx.exec.intent = intent
+
+        log_event(
+            "intent_detected",
+            ctx.trace_id,
+            intent=intent
+        )
+
+        return ctx
+
+
+class ValidateStep:
+    name = "validate"
+
+    def run(self, ctx):
+
+        q = ctx.input.question
+
+        if not is_valid_question_basic(q):
+            raise ValueError("Pregunta inválida")
+
+        if not is_question_related_fast(q, ctx.input.semantic_layer):
+            print("?? Low confidence question, continuing anyway")
+
+        return ctx
+
+
+class LoadSchemaStep:
+    name = "load_schema"
+
+    def run(self, ctx):
+
+        schema = ctx.input.connector.get_schema()
+
+        ctx.exec.schema = schema
+
+        # ?? SOLO nombres reales
+        ctx.exec.columns = schema["column_name"].tolist()
+
+        log_event(
+            "schema_loaded",
+            ctx.trace_id,
+            columns=len(ctx.exec.columns)
+        )
+
+        return ctx
+
+
+class GenerateSQLStep:
+    name = "generate_sql"
+
+    def __init__(self, llm):
+        self.llm = llm
+
+    def run(self, ctx):
+
+        relationships = ctx.input.connector.get_relationships()
+
+        ctx.exec.sql = generate_sql_with_retry(
+            question=ctx.input.question,
+            schema=ctx.exec.schema,
+            semantic_layer=ctx.input.semantic_layer,
+            columns=ctx.exec.columns,
+            llm=self.llm,
+            language=ctx.exec.language,
+            intent=ctx.exec.intent,
+            relationships=relationships
+        )
+
+        log_event(
+            "sql_generated",
+            ctx.trace_id,
+            sql=ctx.exec.sql
+        )
+
+        return ctx
+
+
+class ExecuteSQLStep:
+    name = "execute_sql"
+
+    def run(self, ctx):
+
+        safe_sql = guard_sql(
+            ctx.exec.sql,
+            ctx.exec.columns
+        )
+
+        ctx.exec.safe_sql = safe_sql
+
+        result = ctx.input.connector.execute(safe_sql)
+
+        if result is None or len(result) == 0:
+            raise ValueError("Sin resultados")
+
+        ctx.output.result = result
+
+        return ctx
+
+
+class InsightStep:
+    name = "insight"
+
+    def __init__(self, llm):
+        self.llm = llm
+
+    def run(self, ctx):
+
+        try:
+
+            df = ctx.output.result
+
+            if df is None or len(df) == 0:
+                ctx.output.markdown = "# ?? Sin datos"
+                ctx.output.metrics = {}
+                ctx.output.chart_type = None
+                ctx.output.severity = "warning"
+                return ctx
+
+            df = df.round(2)
+
+            preview = df.head(10).to_dict(orient="records")
+
+            data = {
+                "rows": preview,
+                "intent": ctx.exec.intent.get("intent")
+                if ctx.exec.intent else None
+            }
+
+            prompt = build_insight_prompt(
+                ctx.input.question,
+                data,
+                ctx.exec.language
+            )
+
+            raw_response = self.llm.generate(
+                prompt,
+                system_prompt="You are a senior BI analyst. Return ONLY valid JSON."
+            )
+
+            parsed = parse_analytics_response(raw_response)
+
+            ctx.output.markdown = parsed.get("markdown")
+            ctx.output.chart_type = parsed.get("chart_type")
+            ctx.output.metrics = parsed.get("metrics", {})
+            ctx.output.severity = parsed.get("severity", "info")
+
+        except Exception as e:
+
+            ctx.output.markdown = f"# ? Insight Error\n\n{str(e)}"
+            ctx.output.metrics = {}
+            ctx.output.chart_type = None
+            ctx.output.severity = "error"
+
+        return ctx
+
+
+class DetectLanguageStep:
+    name = "detect_language"
+
+    def run(self, ctx):
+
+        ctx.exec.language = detect_language_fast(
+            ctx.input.question
+        )
+
+        return ctx
+
+
+
+
+
+multiconnector.py
+import os
+import re
+import duckdb
+import pandas as pd
+
+
+def normalize_table_name(file_name: str):
+    name = (
+        file_name
+        .replace(".csv", "")
+        .replace(".xlsx", "")
+        .lower()
+        .replace(" ", "_")
+        .replace("-", "_")
+    )
+    return re.sub(r"[^a-z0-9_]", "_", name)
+
+
+def infer_relation_type(left_df, right_df, left_col, right_col):
+
+    left_unique = left_df[left_col].is_unique
+    right_unique = right_df[right_col].is_unique
+
+    if left_unique and right_unique:
+        return "one_to_one"
+
+    if left_unique and not right_unique:
+        return "one_to_many"
+
+    if not left_unique and right_unique:
+        return "many_to_one"
+
+    return "many_to_many"
+
+
+class MultiDatasetConnector:
+
+    def __init__(self, dataset_ids, relations=None):
+
+        self.conn = duckdb.connect()
+        self.schemas = []
+        self.tables = {}
+        self.relations = relations or []
+
+        for file_name in dataset_ids:
+
+            path = os.path.join("data", file_name)
+
+            if file_name.endswith(".csv"):
+                df = pd.read_csv(path)
+
+            elif file_name.endswith(".xlsx"):
+                df = pd.read_excel(path)
+
+            else:
+                continue
+
+            table_name = normalize_table_name(file_name)
+
+            self.tables[file_name] = {
+                "table_name": table_name,
+                "df": df
+            }
+
+            self.conn.register(table_name, df)
+
+            schema = self.conn.execute(
+                f"DESCRIBE {table_name}"
+            ).df()
+
+            schema["table_name"] = table_name
+            self.schemas.append(schema)
+
+        self._enrich_relations()
+
+    def _enrich_relations(self):
+
+        enriched = []
+
+        for rel in self.relations:
+
+            left_df = self.tables[rel["left_dataset"]]["df"]
+            right_df = self.tables[rel["right_dataset"]]["df"]
+
+            cardinality = infer_relation_type(
+                left_df,
+                right_df,
+                rel["left_column"],
+                rel["right_column"]
+            )
+
+            rel["cardinality"] = cardinality
+
+            rel["left_table"] = self.tables[
+                rel["left_dataset"]
+            ]["table_name"]
+
+            rel["right_table"] = self.tables[
+                rel["right_dataset"]
+            ]["table_name"]
+
+            enriched.append(rel)
+
+        self.relations = enriched
+
+    def execute(self, query: str):
+        return self.conn.execute(query).df()
+
+    def get_schema(self):
+        return pd.concat(self.schemas, ignore_index=True)
+
+    def get_relationships(self):
+        return self.relations
+
+
+chat.py
+import os
+import streamlit as st
+
+from services.speech.loader import load_whisper
+from agents.service import answer_question
+from core.query_store import save_query
+
+from ui.components.audio_input import render_audio_input
+from renderers.streamlit_renderer import render_analytics
+
+DATA_PATH = "data"
+
+
+def switch_dataset(file_name: str):
+    file_path = os.path.join(DATA_PATH, file_name)
+
+    file_type = (
+        "csv" if file_name.endswith(".csv")
+        else "excel" if file_name.endswith(".xlsx")
+        else None
+    )
+
+    if not file_type:
+        return
+
+    # mantener dataset activo para UI
+    st.session_state["file_path"] = file_path
+    st.session_state["dataset_id"] = file_name
+
+    # multi selección
+    if "active_datasets" not in st.session_state:
+        st.session_state["active_datasets"] = []
+
+    if file_name not in st.session_state["active_datasets"]:
+        st.session_state["active_datasets"].append(file_name)
+
+
+def remove_dataset(file_name: str):
+    if "active_datasets" not in st.session_state:
+        return
+
+    if file_name in st.session_state["active_datasets"]:
+        st.session_state["active_datasets"].remove(file_name)
+
+
+def render_chat():
+
+    st.title("?? Nueva conversación")
+
+    tabs = st.tabs([
+        "?? Chat",
+        "?? Comparación",
+        "?? Vista"
+    ])
+
+    with tabs[0]:
+
+        default_q = st.session_state.get(
+            "prefill_question",
+            ""
+        )
+
+        text_prompt = st.text_input(
+            "Consulta sobre datasets",
+            value=default_q
+        )
+
+        audio = render_audio_input()
+
+        if "audio_prompt" not in st.session_state:
+            st.session_state["audio_prompt"] = ""
+
+        if audio and "bytes" in audio:
+
+            with st.spinner("?? Transcribiendo..."):
+                transcription = load_whisper().transcribe(
+                    audio["bytes"]
+                )
+
+            st.session_state["audio_prompt"] = transcription
+
+        if st.session_state["audio_prompt"]:
+            st.info(
+                f"?? {st.session_state['audio_prompt']}"
+            )
+
+        question = (
+            text_prompt
+            or st.session_state["audio_prompt"]
+        )
+
+        # ==========================================
+        # DATASETS DISPONIBLES
+        # ==========================================
+
+        available_datasets = (
+            sorted(os.listdir(DATA_PATH))
+            if os.path.exists(DATA_PATH)
+            else []
+        )
+
+        st.markdown("---")
+
+        with st.expander("?? Datasets disponibles", expanded=False):
+
+            active = st.session_state.get(
+                "active_datasets",
+                []
+            )
+
+            for ds in available_datasets:
+
+                col1, col2, col3 = st.columns([4, 1, 1])
+
+                with col1:
+                    st.write(ds)
+
+                with col2:
+                    if ds in active:
+                        st.success("Activo")
+                    else:
+                        if st.button(
+                            "Agregar",
+                            key=f"add_{ds}"
+                        ):
+                            switch_dataset(ds)
+                            st.rerun()
+
+                with col3:
+                    if ds in active:
+                        if st.button(
+                            "Quitar",
+                            key=f"remove_{ds}"
+                        ):
+                            remove_dataset(ds)
+                            st.rerun()
+
+        # ==========================================
+        # DATASETS ACTIVOS
+        # ==========================================
+
+        active = st.session_state.get(
+            "active_datasets",
+            []
+        )
+
+        if active:
+            st.info(
+                "Datasets activos: " + ", ".join(active)
+            )
+            # ==========================================
+            # RELACIONES ENTRE DATASETS
+            # ==========================================
+
+            if len(active) >= 2:
+
+                st.markdown("### ?? Relacionar datasets")
+
+                if "dataset_relations" not in st.session_state:
+                    st.session_state["dataset_relations"] = []
+
+                selected_left = st.selectbox(
+                    "Dataset izquierdo",
+                    active,
+                    key="rel_left_ds"
+                )
+
+                selected_right = st.selectbox(
+                    "Dataset derecho",
+                    [d for d in active if d != selected_left],
+                    key="rel_right_ds"
+                )
+
+                # -------------------------
+                # leer columnas reales
+                # -------------------------
+                import pandas as pd
+
+                left_path = os.path.join(DATA_PATH, selected_left)
+                right_path = os.path.join(DATA_PATH, selected_right)
+
+                left_cols = pd.read_csv(left_path, nrows=1).columns.tolist()
+                right_cols = pd.read_csv(right_path, nrows=1).columns.tolist()
+
+                left_col = st.selectbox(
+                    "Columna izquierda",
+                    left_cols,
+                    key="rel_left_col"
+                )
+
+                right_col = st.selectbox(
+                    "Columna derecha",
+                    right_cols,
+                    key="rel_right_col"
+                )
+
+                if st.button("Agregar relación"):
+
+                    relation = {
+                        "left_dataset": selected_left,
+                        "left_column": left_col,
+                        "right_dataset": selected_right,
+                        "right_column": right_col
+                    }
+
+                    st.session_state["dataset_relations"].append(
+                        relation
+                    )
+
+                    st.success("Relación agregada")
+                    st.rerun()
+
+                # mostrar relaciones
+                if st.session_state["dataset_relations"]:
+
+                    st.markdown("### Relaciones activas")
+
+                    for i, rel in enumerate(
+                        st.session_state["dataset_relations"]
+                    ):
+
+                        st.write(
+                            f"{rel['left_dataset']}.{rel['left_column']} "
+                            f"? "
+                            f"{rel['right_dataset']}.{rel['right_column']}"
+                        )
+        else:
+            st.warning("No hay datasets seleccionados")
+
+        st.markdown("---")
+
+        col1, col2 = st.columns([1, 1])
+
+        with col1:
+
+            if st.button("Ejecutar"):
+
+                if not active:
+                    st.error(
+                        "Seleccioná al menos un dataset"
+                    )
+                    return
+
+                if not question:
+                    st.warning("Ingresá una pregunta")
+                    return
+
+                st.session_state.setdefault(
+                    "recent_queries",
+                    []
+                )
+
+                if question not in st.session_state["recent_queries"]:
+                    st.session_state["recent_queries"].insert(
+                        0,
+                        question
+                    )
+
+                save_query(
+                    question,
+                    dataset_id=",".join(active),
+                    intent=None
+                )
+
+                with st.spinner("?? Analizando..."):
+
+                    response = answer_question(
+                        question=question,
+                        dataset_ids=active,
+                        dataset_relations=st.session_state.get("dataset_relations", []),
+                        semantic_layer=st.session_state.get("semantic_layer"),
+                        llm=st.session_state["llm"]
+                    )
+
+                st.session_state["last_response"] = response
+
+        with col2:
+
+            if st.button("Limpiar"):
+
+                st.session_state["prefill_question"] = ""
+                st.session_state["audio_prompt"] = ""
+
+                st.session_state.pop(
+                    "last_response",
+                    None
+                )
+
+        st.markdown("---")
+
+        response = st.session_state.get(
+            "last_response"
+        )
+
+        if response:
+
+            if hasattr(response, "type") and response.type == "error":
+                st.error(response.markdown)
+
+            else:
+                render_analytics(response)
+
+        else:
+            st.info(
+                "Todavía no ejecutaste ninguna consulta"
+            )
+
+    with tabs[1]:
+        st.markdown("### ?? Comparar datasets")
+        st.info(
+            "Ahora podés seleccionar varios datasets en la pestaña Chat."
+        )
+
+    with tabs[2]:
+        st.markdown("### ?? Opciones de vista")
+        st.checkbox("Modo compacto")
+        st.checkbox("Mostrar insight")
+        st.checkbox("Mostrar SQL")
+
+
+
+
+
+
