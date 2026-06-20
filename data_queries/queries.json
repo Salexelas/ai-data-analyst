@@ -1,5 +1,47 @@
 [
   {
+    "question": "5 players con mas puntos",
+    "dataset": "TeamStats2026.csv,players2026.csv",
+    "intent": null,
+    "ts": 1781987180.6285815,
+    "response": null
+  },
+  {
+    "question": "5 equipos con mas puntos",
+    "dataset": "TeamStats2026.csv",
+    "intent": null,
+    "ts": 1781987168.9156713,
+    "response": null
+  },
+  {
+    "question": "5 jugadores con mas puntos",
+    "dataset": "players2026.csv",
+    "intent": null,
+    "ts": 1781972527.6993651,
+    "response": null
+  },
+  {
+    "question": "5 equipos con mas puntows",
+    "dataset": "TeamStats2026.csv",
+    "intent": null,
+    "ts": 1781921423.9340982,
+    "response": null
+  },
+  {
+    "question": "3 equipos con mas pts",
+    "dataset": "TeamStats2026.csv,players2026.csv",
+    "intent": null,
+    "ts": 1781917617.8491244,
+    "response": null
+  },
+  {
+    "question": "5 equipos con mas putnso",
+    "dataset": "TeamStats2026.csv",
+    "intent": null,
+    "ts": 1781917550.1306615,
+    "response": null
+  },
+  {
     "question": "proemdio de edad de los jugadores con menos de 24 victorias",
     "dataset": "TeamStats2026.csv,players2026.csv",
     "intent": null,
@@ -67,13 +109,6 @@
     "dataset": "nbaStats - Hoja 1.csv,players.csv",
     "intent": null,
     "ts": 1779243219.5541074,
-    "response": null
-  },
-  {
-    "question": "5 equipos con mas puntos",
-    "dataset": "nbaStats - Hoja 1.csv,players.csv",
-    "intent": null,
-    "ts": 1779243141.0255249,
     "response": null
   },
   {
@@ -210,13 +245,6 @@
     "response": null
   },
   {
-    "question": "5 jugadores con mas puntos",
-    "dataset": "players.csv",
-    "intent": null,
-    "ts": 1778981273.820559,
-    "response": null
-  },
-  {
     "question": "cuantos partidos ganados tienen los 3 primeros equipos, dame el nombre",
     "dataset": "nbaStats - Hoja 1.csv",
     "intent": null,
@@ -319,34 +347,6 @@
     "dataset": "players.csv",
     "intent": null,
     "ts": 1778961786.012893,
-    "response": null
-  },
-  {
-    "question": "jugadores con mas perdidas, cantidad",
-    "dataset": "players.csv",
-    "intent": null,
-    "ts": 1778723573.9737558,
-    "response": null
-  },
-  {
-    "question": "jugadores con mas perdidas(TOV)",
-    "dataset": "players.csv",
-    "intent": null,
-    "ts": 1778723561.171294,
-    "response": null
-  },
-  {
-    "question": "jugador con mas perdidas(TOV)",
-    "dataset": "players.csv",
-    "intent": null,
-    "ts": 1778723538.4135652,
-    "response": null
-  },
-  {
-    "question": "jugadores con  nmas rebotes , pñuntos y asistencias",
-    "dataset": "players.csv",
-    "intent": null,
-    "ts": 1778712686.8921947,
     "response": null
   }
 ]

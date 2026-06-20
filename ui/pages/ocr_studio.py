@@ -1,166 +1,106 @@
 import streamlit as st
-import os
-from datetime import datetime
 
-from services.ocr.loader import load_ocr
-from services.ocr.llm_parser_service import OCRLLMParserService
-from services.ocr.validator_service import OCRValidatorService
-from connectors.factory import create_connector
-
-DATA_PATH = "data"
-os.makedirs(DATA_PATH, exist_ok=True)
+from services.ocr_pipeline import OCRPipeline
 
 
 def render_ocr_studio():
 
-    st.title("📷 OCR Studio")
+    st.title("📷 OCR Studio (Advanced)")
 
-    uploaded = st.file_uploader(
-        "Subir archivo",
+    uploaded_file = st.file_uploader(
+        "Upload file",
         type=["png", "jpg", "jpeg", "pdf"]
     )
 
-    if not uploaded:
+    if not uploaded_file:
         return
 
-    # limpiar estado si cambia archivo
-    current_file = uploaded.name
-    if st.session_state.get("ocr_last_file") != current_file:
-        st.session_state["ocr_last_file"] = current_file
-        st.session_state["ocr_raw_text"] = ""
-        st.session_state.pop("ocr_df", None)
+    # =========================
+    # OCR STEP
+    # =========================
+    if st.button("Run OCR"):
+
+        with st.spinner("Processing OCR..."):
+
+            text = OCRPipeline.extract(uploaded_file)
+            st.session_state["ocr_text"] = text
+
+    text = st.session_state.get("ocr_text")
+
+    if not text:
+        return
 
     # =========================
-    # OCR
+    # EDITABLE TEXT
     # =========================
-    if "ocr_raw_text" not in st.session_state:
-        st.session_state["ocr_raw_text"] = ""
-
-    if st.button("Leer archivo"):
-
-        with st.spinner("Procesando OCR..."):
-
-            ocr = load_ocr()
-
-            # IMPORTANTE: pasar solo bytes
-            text = ocr.extract_text(
-                uploaded.getvalue()
-            )
-
-            st.session_state["ocr_raw_text"] = text
+    editable_text = st.text_area(
+        "Edit extracted text",
+        value=text,
+        height=300
+    )
 
     # =========================
-    # RAW TEXT
+    # ADVANCED INPUTS
     # =========================
-    if st.session_state["ocr_raw_text"]:
+    context = st.text_input(
+        "Context (domain / type of document)"
+    )
 
-        st.subheader("Texto detectado (editable)")
+    columns = st.text_input(
+        "Columns (comma separated)"
+    )
 
-        editable_text = st.text_area(
-            "Corregí si hace falta",
-            value=st.session_state["ocr_raw_text"],
-            height=320
-        )
-
-        context = st.text_input(
-            "Contexto",
-            placeholder="Ej: factura ferretería / estadísticas NBA"
-        )
-
-        columns = st.text_input(
-            "Columnas",
-            placeholder="Ej: producto,cantidad,precio_unitario"
-        )
-
-        examples = st.text_area(
-            "Ejemplos (opcional)",
-            placeholder="Ej:\nPintura,3,15500\nCeramica,2,12000"
-        )
-
-        # =========================
-        # GENERATE DATAFRAME
-        # =========================
-        if st.button("Generar dataset"):
-
-            cols = [
-                c.strip()
-                for c in columns.split(",")
-                if c.strip()
-            ]
-
-            if not cols:
-                st.warning("Ingresá al menos una columna")
-                return
-
-            parser = OCRLLMParserService()
-
-            with st.spinner("Estructurando dataset..."):
-
-                df = parser.parse_to_dataframe(
-                    raw_text=editable_text,
-                    columns=cols,
-                    examples=examples,
-                    context=context,
-                    llm=st.session_state["llm"]
-                )
-
-            st.session_state["ocr_df"] = df
+    examples = st.text_area(
+        "Examples (optional)"
+    )
 
     # =========================
-    # PREVIEW
+    # GENERATE DATASET
     # =========================
-    if "ocr_df" in st.session_state:
+    if st.button("Generate dataset"):
 
-        st.subheader("Preview dataset")
-
-        edited_df = st.data_editor(
-            st.session_state["ocr_df"],
-            use_container_width=True,
-            num_rows="dynamic"
+        df = OCRPipeline.build_dataframe(
+            raw_text=editable_text,
+            columns=columns,
+            context=context,
+            examples=examples,
+            llm=st.session_state["llm"]
         )
 
-        validator = OCRValidatorService()
+        st.session_state["ocr_df"] = df
 
-        errors = validator.validate_dataframe(
-            edited_df
+    # =========================
+    # PREVIEW + VALIDATION
+    # =========================
+    df = st.session_state.get("ocr_df")
+
+    if df is None:
+        return
+
+    edited_df = st.data_editor(
+        df,
+        use_container_width=True,
+        num_rows="dynamic"
+    )
+
+    errors = OCRPipeline.validate(edited_df)
+
+    if errors:
+        for e in errors:
+            st.error(e)
+        return
+
+    st.success("Dataset valid ✔")
+
+    # =========================
+    # SAVE
+    # =========================
+    if st.button("Save dataset"):
+
+        result = OCRPipeline.save(
+            edited_df,
+            prefix="ocr_studio"
         )
 
-        if errors:
-
-            for err in errors:
-                st.error(err)
-
-        else:
-
-            st.success("Dataset válido ✔")
-
-            if st.button("Guardar dataset"):
-
-                file_name = datetime.now().strftime(
-                    "ocr_%Y%m%d_%H%M%S"
-                ) + ".csv"
-
-                save_path = os.path.join(
-                    DATA_PATH,
-                    file_name
-                )
-
-                edited_df.to_csv(
-                    save_path,
-                    index=False
-                )
-
-                connector = create_connector(
-                    "csv",
-                    {"file_path": save_path}
-                )
-
-                st.session_state["connector"] = connector
-                st.session_state["file_path"] = save_path
-                st.session_state["dataset_id"] = file_name
-
-                st.success(
-                    f"Dataset guardado: {file_name}"
-                )
-
-                st.rerun()
+        st.success(result["dataset_id"])
+        st.rerun()
