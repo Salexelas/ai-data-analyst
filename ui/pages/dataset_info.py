@@ -65,7 +65,7 @@ def render_dataset_info():
 
         st.dataframe(
             schema_df,
-            use_container_width=True
+            width="stretch"
         )
 
     # NUMERIC
@@ -87,7 +87,7 @@ def render_dataset_info():
 
             st.dataframe(
                 stats.round(2),
-                use_container_width=True
+                width="stretch"
             )
 
             st.bar_chart(numeric_df.mean())
@@ -125,7 +125,7 @@ def render_dataset_info():
 
             st.dataframe(
                 corr.round(2),
-                use_container_width=True
+                width="stretch"
             )
 
     # RAW
@@ -133,5 +133,5 @@ def render_dataset_info():
 
         st.dataframe(
             df.head(100),
-            use_container_width=True
+            width="stretch"
         )

@@ -117,7 +117,7 @@ def render_chart(df, config):
         # ==================================================
         st.plotly_chart(
             fig,
-            use_container_width=True
+            width="stretch"
         )
 
         # ==================================================
@@ -127,7 +127,7 @@ def render_chart(df, config):
 
             st.dataframe(
                 chart_df,
-                use_container_width=True
+                width="stretch"
             )
 
     except Exception as e:

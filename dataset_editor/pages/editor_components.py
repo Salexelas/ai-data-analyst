@@ -115,7 +115,7 @@ def render_data_tab(df):
 
     edited_df = st.data_editor(
         st.session_state["edited_df"],
-        use_container_width=True,
+        width="stretch",
         num_rows="dynamic",
         height=500,
         key="data_editor"
@@ -153,7 +153,7 @@ def render_data_tab(df):
         st.write("Preview:")
         st.dataframe(
             st.session_state["transform_preview"],
-            use_container_width=True
+            width="stretch"
         )
 
         if st.button("✅ Aplicar transformación"):

@@ -23,7 +23,7 @@ def render_dataset_preview(
 
             st.dataframe(
                 preview,
-                use_container_width=True
+                width="stretch"
             )
 
         except Exception as e:

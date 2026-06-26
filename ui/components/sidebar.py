@@ -2,111 +2,121 @@ import streamlit as st
 import os
 
 
+# =========================
+# NAVIGATION CONFIG
+# =========================
+NAV = [
+    {
+        "section": "📥 Ingresar Datos",
+        "items": [
+            ("+ Crear", "data_create"),
+            ("Fuente externa", "data_external"),
+        ],
+    },
+    {
+        "section": "📷 OCR Studio",
+        "items": [
+            ("Procesar documentos", "ocr_studio"),
+        ],
+    },
+    {
+        "section": "📚 Datasets",
+        "items": [
+            ("Ver / Gestionar", "datasets_manage"),
+        ],
+    },
+    {
+        "section": "🕸️ Graph Builder",
+        "items": [
+            ("Abrir canvas", "graph_builder"),
+        ],
+    },
+    {
+        "section": "🧠 Semántica",
+        "items": [
+            ("Editar", "semantic"),
+        ],
+    },
+    {
+        "section": "📊 Gráficos",
+        "items": [
+            ("Ver gráficos", "charts"),
+        ],
+    },
+    {
+        "section": "🤖 ML",
+        "items": [
+            ("Modelos", "ml"),
+        ],
+    },
+    {
+        "section": "🏆 Ranking",
+        "items": [
+            ("Queries", "ranking"),
+        ],
+    },
+]
+
+
+# =========================
+# HELPERS
+# =========================
+def navigate(page: str):
+    st.session_state.page = page
+
+
+def render_nav_section(section):
+    with st.expander(section["section"]):
+
+        for label, page in section["items"]:
+
+            key = f"nav_{section['section']}_{label}"
+
+            if st.button(label, key=key):
+                navigate(page)
+
+
+def render_recents():
+    with st.expander("🕓 Recientes", expanded=True):
+
+        queries = st.session_state.get("recent_queries", [])
+
+        for i, q in enumerate(queries):
+
+            if st.button(q, key=f"sb_recent_{i}"):
+
+                st.session_state["prefill_question"] = q
+                navigate("chat")
+
+
+# =========================
+# MAIN SIDEBAR
+# =========================
 def render_sidebar():
 
     with st.sidebar:
+
         st.title("📊 App Data IA Analisis")
 
-        # 🔥 DATASET ACTIVO
-        if "file_path" in st.session_state and st.session_state["file_path"]:
+        # Dataset status
+        if st.session_state.get("file_path"):
             st.success(
                 f"📊 Dataset:\n{os.path.basename(st.session_state['file_path'])}"
             )
         else:
             st.warning("No hay dataset activo")
 
-        # =========================
-        # MAIN
-        # =========================
+        # Main action
         if st.button("🆕 Nueva conversación"):
-            st.session_state.page = "chat"
+            navigate("chat")
 
         st.markdown("---")
 
-        # =========================
-        # DATA
-        # =========================
-        with st.expander("📥 Ingresar Datos"):
-
-            if st.button("+ Crear"):
-                st.session_state.page = "data_create"
-
-            if st.button("Fuente externa"):
-                st.session_state.page = "data_external"
-
-        # =========================
-        # OCR STUDIO
-        # =========================
-        with st.expander("📷 OCR Studio"):
-
-            if st.button("Procesar documentos"):
-                st.session_state.page = "ocr_studio"
-
-        # =========================
-        # DATASETS
-        # =========================
-        with st.expander("📚 Datasets"):
-
-            if st.button("Ver / Gestionar"):
-                st.session_state.page = "datasets_manage"
-
-        # =========================
-        # GRAPH BUILDER
-        # =========================
-        with st.expander("🕸️ Graph Builder"):
-
-            if st.button("Abrir canvas"):
-                st.session_state.page = "graph_builder"
-
-        # =========================
-        # SEMANTIC
-        # =========================
-        with st.expander("🧠 Semántica"):
-
-            if st.button("Editar"):
-                st.session_state.page = "semantic"
-
-        # =========================
-        # CHARTS
-        # =========================
-        with st.expander("📊 Gráficos"):
-
-            if st.button("Ver gráficos"):
-                st.session_state.page = "charts"
-
-        # =========================
-        # ML
-        # =========================
-        with st.expander("🤖 ML"):
-
-            if st.button("Modelos"):
-                st.session_state.page = "ml"
-
-        # =========================
-        # RANKING
-        # =========================
-        with st.expander("🏆 Ranking"):
-
-            if st.button("Queries"):
-                st.session_state.page = "ranking"
+        # Navigation sections (data-driven)
+        for section in NAV:
+            render_nav_section(section)
 
         st.markdown("---")
 
-        # =========================
-        # RECENTS
-        # =========================
-        with st.expander("🕓 Recientes", expanded=True):
-
-            queries = st.session_state.get(
-                "recent_queries",
-                []
-            )
-
-            for i, q in enumerate(queries):
-
-                if st.button(
-                    q,
-                    key=f"sb_recent_{i}"
-                ):
-                    st.session_state["prefill_question"] = q
-                    st.session_state.page = "chat"
+        # Recents
+        render_recents()

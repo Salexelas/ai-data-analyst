@@ -2,11 +2,11 @@
 
 Radon 
 
-radon cc agents core connectors semantic tools ui -s -a
+radon cc agents core dataset_editor pipeline rederers router connectors services semantic tools ui -s -a
 
                     ///////////////////
 
-radon cc agents core connectors semantic tools ui -s -a |
+radon cc agents core dataset_editor pipeline rederers router connectors services semantic tools ui -s -a |
 ForEach-Object {
     if ($_ -match '\((\d+)\)') {
         [PSCustomObject]@{

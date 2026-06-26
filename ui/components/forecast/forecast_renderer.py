@@ -33,14 +33,14 @@ def render_forecast_chart(df, config):
 
         st.plotly_chart(
             fig,
-            use_container_width=True
+            width="stretch"
         )
 
         with st.expander("📄 Forecast"):
 
             st.dataframe(
                 forecast_df,
-                use_container_width=True
+                width="stretch"
             )
 
     except Exception as e:
