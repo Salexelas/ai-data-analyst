@@ -15,33 +15,24 @@ def render_ocr_studio():
     if not uploaded_file:
         return
 
-    # =========================
-    # OCR STEP
-    # =========================
     if st.button("Run OCR"):
 
         with st.spinner("Processing OCR..."):
-
-            text = OCRPipeline.extract(uploaded_file)
-            st.session_state["ocr_text"] = text
+            st.session_state["ocr_text"] = OCRPipeline.extract(
+                uploaded_file
+            )
 
     text = st.session_state.get("ocr_text")
 
     if not text:
         return
 
-    # =========================
-    # EDITABLE TEXT
-    # =========================
     editable_text = st.text_area(
         "Edit extracted text",
         value=text,
         height=300
     )
 
-    # =========================
-    # ADVANCED INPUTS
-    # =========================
     context = st.text_input(
         "Context (domain / type of document)"
     )
@@ -54,24 +45,37 @@ def render_ocr_studio():
         "Examples (optional)"
     )
 
-    # =========================
-    # GENERATE DATASET
-    # =========================
-    if st.button("Generate dataset"):
+    generate_dataset(
+        editable_text,
+        columns,
+        context,
+        examples
+    )
 
-        df = OCRPipeline.build_dataframe(
-            raw_text=editable_text,
-            columns=columns,
-            context=context,
-            examples=examples,
-            llm=st.session_state["llm"]
-        )
+    preview_dataset()
 
-        st.session_state["ocr_df"] = df
 
-    # =========================
-    # PREVIEW + VALIDATION
-    # =========================
+def generate_dataset(
+    editable_text,
+    columns,
+    context,
+    examples
+):
+
+    if not st.button("Generate dataset"):
+        return
+
+    st.session_state["ocr_df"] = OCRPipeline.build_dataframe(
+        raw_text=editable_text,
+        columns=columns,
+        context=context,
+        examples=examples,
+        llm=st.session_state["llm"]
+    )
+
+
+def preview_dataset():
+
     df = st.session_state.get("ocr_df")
 
     if df is None:
@@ -86,21 +90,19 @@ def render_ocr_studio():
     errors = OCRPipeline.validate(edited_df)
 
     if errors:
-        for e in errors:
-            st.error(e)
+        for error in errors:
+            st.error(error)
         return
 
     st.success("Dataset valid ✔")
 
-    # =========================
-    # SAVE
-    # =========================
-    if st.button("Save dataset"):
+    if not st.button("Save dataset"):
+        return
 
-        result = OCRPipeline.save(
-            edited_df,
-            prefix="ocr_studio"
-        )
+    result = OCRPipeline.save(
+        edited_df,
+        prefix="ocr_studio"
+    )
 
-        st.success(result["dataset_id"])
-        st.rerun()
+    st.success(result["dataset_id"])
+    st.rerun()

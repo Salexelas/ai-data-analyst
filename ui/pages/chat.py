@@ -1,25 +1,9 @@
 import streamlit as st
-
-from ui.services.query_service import (
-    QueryService
-)
-
-from ui.components.query_panel import (
-    render_query_panel
-)
-
-from ui.components.dataset_panel import (
-    render_dataset_panel
-)
-
-from ui.components.relationship_panel import (
-    render_relationship_panel
-)
-
-from ui.components.response_panel import (
-    render_response_panel
-)
-
+from ui.services.query_service import QueryService
+from ui.components.query_panel import render_query_panel
+from ui.components.dataset_panel import render_dataset_panel
+from ui.components.relationship_panel import render_relationship_panel
+from ui.components.response_panel import render_response_panel
 
 def render_chat():
 

@@ -3,124 +3,82 @@ import streamlit as st
 from ui.services.dataset_activation_service import (
     DatasetActivationService
 )
-
 from ui.services.dataset_delete_service import (
     DatasetDeleteService
 )
 
 
-def render_dataset_actions(
-    dataset_name: str
-):
+def render_dataset_actions(dataset_name: str):
 
-    col1, col2, col3, col4 = (
-        st.columns(4)
-    )
-
-    # -------------------------
-    # LOAD
-    # -------------------------
+    col1, col2, col3, col4 = st.columns(4)
 
     with col1:
-
-        if st.button(
+        render_action_button(
             "Load",
-            key=f"load_{dataset_name}"
-        ):
-
-            try:
-
-                DatasetActivationService.activate(
-                    dataset_name
-                )
-
-                st.rerun()
-
-            except Exception as e:
-
-                st.error(
-                    str(e)
-                )
-
-    # -------------------------
-    # EDIT
-    # -------------------------
+            f"load_{dataset_name}",
+            lambda: DatasetActivationService.activate(
+                dataset_name
+            ),
+        )
 
     with col2:
-
-        if st.button(
+        render_action_button(
             "Edit",
-            key=f"edit_{dataset_name}"
-        ):
-
-            try:
-
-                DatasetActivationService.activate(
-                    dataset_name
-                )
-
-                st.session_state.page = (
-                    "dataset_editor"
-                )
-
-                st.rerun()
-
-            except Exception as e:
-
-                st.error(
-                    str(e)
-                )
-
-    # -------------------------
-    # INFO
-    # -------------------------
+            f"edit_{dataset_name}",
+            lambda: edit_dataset(dataset_name),
+        )
 
     with col3:
-
-        if st.button(
+        render_action_button(
             "Info",
-            key=f"info_{dataset_name}"
-        ):
-
-            try:
-
-                DatasetActivationService.activate(
-                    dataset_name
-                )
-
-                st.session_state.page = (
-                    "dataset_info"
-                )
-
-                st.rerun()
-
-            except Exception as e:
-
-                st.error(
-                    str(e)
-                )
-
-    # -------------------------
-    # DELETE
-    # -------------------------
+            f"info_{dataset_name}",
+            lambda: show_dataset_info(dataset_name),
+        )
 
     with col4:
-
-        if st.button(
+        render_action_button(
             "🗑️",
-            key=f"delete_{dataset_name}"
-        ):
+            f"delete_{dataset_name}",
+            lambda: DatasetDeleteService.delete(
+                dataset_name
+            ),
+        )
 
-            try:
 
-                DatasetDeleteService.delete(
-                    dataset_name
-                )
+def render_action_button(
+    label: str,
+    key: str,
+    action,
+):
 
-                st.rerun()
+    if not st.button(label, key=key):
+        return
 
-            except Exception as e:
+    try:
+        action()
+        st.rerun()
 
-                st.error(
-                    str(e)
-                )
+    except Exception as e:
+        st.error(str(e))
+
+
+def edit_dataset(dataset_name: str):
+
+    DatasetActivationService.activate(
+        dataset_name
+    )
+
+    st.session_state.page = (
+        "dataset_editor"
+    )
+
+
+def show_dataset_info(dataset_name: str):
+
+    DatasetActivationService.activate(
+        dataset_name
+    )
+
+    st.session_state.page = (
+        "dataset_info"
+    )

@@ -29,20 +29,29 @@ def render_aliases(columns, sl):
         ]
 
 
+def session_text_input(label, key, default):
+
+    st.session_state.setdefault(
+        key,
+        default,
+    )
+
+    return st.text_input(
+        label,
+        key=key,
+    )
+
+
 def render_metrics(sl):
 
     st.subheader("Métricas")
 
-    for k, v in list(sl["metrics"].items()):
+    for name, value in sl["metrics"].items():
 
-        key = f"metric_{k}"
-
-        if key not in st.session_state:
-            st.session_state[key] = v
-
-        sl["metrics"][k] = st.text_input(
-            k,
-            key=key,
+        sl["metrics"][name] = session_text_input(
+            name,
+            f"metric_{name}",
+            value,
         )
 
     st.markdown("### ➕ Nueva métrica")

@@ -1,12 +1,6 @@
 import streamlit as st
-
-from services.speech.loader import (
-    load_whisper
-)
-
-from ui.components.audio_input import (
-    render_audio_input
-)
+from services.speech.loader import (load_whisper)
+from ui.components.audio_input import (render_audio_input)
 
 
 def render_query_panel() -> str:

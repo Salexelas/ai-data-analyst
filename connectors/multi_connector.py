@@ -16,22 +16,22 @@ def normalize_table_name(file_name: str):
     return re.sub(r"[^a-z0-9_]", "_", name)
 
 
+RELATION_TYPES = {
+    (True, True): "one_to_one",
+    (True, False): "one_to_many",
+    (False, True): "many_to_one",
+    (False, False): "many_to_many",
+}
+
+
 def infer_relation_type(left_df, right_df, left_col, right_col):
 
-    left_unique = left_df[left_col].is_unique
-    right_unique = right_df[right_col].is_unique
+    key = (
+        left_df[left_col].is_unique,
+        right_df[right_col].is_unique,
+    )
 
-    if left_unique and right_unique:
-        return "one_to_one"
-
-    if left_unique and not right_unique:
-        return "one_to_many"
-
-    if not left_unique and right_unique:
-        return "many_to_one"
-
-    return "many_to_many"
-
+    return RELATION_TYPES[key]
 
 class MultiDatasetConnector:
 

@@ -1,15 +1,9 @@
 import os
-
 import pandas as pd
 import streamlit as st
-
-from ui.services.relationship_service import (
-    RelationshipService
-)
-
+from ui.services.relationship_service import RelationshipService
 
 DATA_PATH = "data"
-
 
 def render_relationship_panel():
 

@@ -59,43 +59,66 @@ def is_valid_question_basic(question: str):
     return True
 
 
-def is_question_related_fast(question, semantic_layer):
+def get_search_terms(semantic_layer):
+
+    terms = list(
+        semantic_layer.get("metrics", {}).keys()
+    )
+
+    for aliases in semantic_layer.get(
+        "aliases",
+        {},
+    ).values():
+
+        if isinstance(aliases, list):
+            terms.extend(aliases)
+        else:
+            terms.append(aliases)
+
+    terms.extend(
+        semantic_layer.get("columns", [])
+    )
+
+    return [
+        normalize(term)
+        for term in terms
+    ]
+
+
+def match_score(question, term):
+
+    question_tokens = set(question.split())
+    term_tokens = set(term.split())
+
+    if not term_tokens:
+        return 0
+
+    coverage = (
+        len(question_tokens & term_tokens)
+        / len(term_tokens)
+    )
+
+    substring = int(term in question)
+
+    return coverage + 0.3 * substring
+
+
+def is_question_related_fast(
+    question,
+    semantic_layer,
+):
 
     if not semantic_layer:
         return True
 
-    q = normalize(question)
+    question = normalize(question)
 
-    terms = []
-
-    # metrics
-    terms += list(semantic_layer.get("metrics", {}).keys())
-
-    # aliases
-    for v in semantic_layer.get("aliases", {}).values():
-        if isinstance(v, list):
-            terms += v
-        else:
-            terms.append(v)
-
-    # 🔥 fallback real
-    terms += semantic_layer.get("columns", [])
-
-    terms = [normalize(t) for t in terms]
-
-    def match_score(q, term):
-        q_tokens = set(q.split())
-        t_tokens = set(term.split())
-
-        if not t_tokens:
-            return 0
-
-        coverage = len(q_tokens & t_tokens) / len(t_tokens)
-        substring = 1 if term in q else 0
-
-        return coverage + 0.3 * substring
-
-    return any(match_score(q, t) >= 0.5 for t in terms)
+    return any(
+        match_score(question, term) >= 0.5
+        for term in get_search_terms(
+            semantic_layer
+        )
+    )
 
 
 def detect_language_fast(text):

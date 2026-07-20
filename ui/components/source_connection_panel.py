@@ -1,62 +1,40 @@
 import streamlit as st
 
-from services.source_service import (
-    SourceService
-)
+from services.source_service import SourceService
+
+
+SOURCE_CONFIG = {
+    "postgres": ("Connection string", "uri"),
+    "mysql": ("Connection string", "uri"),
+    "api": ("Base URL", "base_url"),
+    "google_sheets": ("Google Sheet URL", "url"),
+}
 
 
 def render_source_connection_panel():
 
     source_type = st.selectbox(
         "Tipo de fuente",
-        [
-            "postgres",
-            "mysql",
-            "api",
-            "google_sheets"
-        ]
+        list(SOURCE_CONFIG.keys()),
     )
 
     config = {}
 
-    if source_type in (
-        "postgres",
-        "mysql"
-    ):
+    label, key = SOURCE_CONFIG[source_type]
 
-        config["uri"] = st.text_input(
-            "Connection string"
-        )
+    config[key] = st.text_input(label)
 
-    elif source_type == "api":
-
-        config["base_url"] = st.text_input(
-            "Base URL"
-        )
-
-    elif source_type == "google_sheets":
-
-        config["url"] = st.text_input(
-            "Google Sheet URL"
-        )
-
-    if st.button(
-        "Conectar"
-    ):
+    if st.button("Conectar"):
 
         try:
 
             SourceService.register(
                 source_type,
-                config
+                config,
             )
 
-            st.success(
-                "✅ Fuente conectada"
-            )
+            st.success("✅ Fuente conectada")
 
         except Exception as exc:
 
-            st.error(
-                str(exc)
-            )
+            st.error(str(exc))

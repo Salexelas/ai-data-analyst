@@ -1,9 +1,37 @@
 [
   {
+    "question": "3 equipos con mas puntos",
+    "dataset": "TeamStats2026.csv",
+    "intent": null,
+    "ts": 1783557742.2832007,
+    "response": null
+  },
+  {
     "question": "5 equipos con mas puntos",
     "dataset": "TeamStats2026.csv",
     "intent": null,
-    "ts": 1782515242.575235,
+    "ts": 1783557735.2797627,
+    "response": null
+  },
+  {
+    "question": "2 equipos con mas rebotes",
+    "dataset": "TeamStats2026.csv",
+    "intent": null,
+    "ts": 1782956470.695435,
+    "response": null
+  },
+  {
+    "question": "hola",
+    "dataset": "TeamStats2026.csv",
+    "intent": null,
+    "ts": 1782697651.158896,
+    "response": null
+  },
+  {
+    "question": "5 equpos con mas puntos",
+    "dataset": "TeamStats2026.csv",
+    "intent": null,
+    "ts": 1782685349.9384813,
     "response": null
   },
   {
@@ -11,13 +39,6 @@
     "dataset": "TeamStats2026.csv",
     "intent": null,
     "ts": 1782352004.5648694,
-    "response": null
-  },
-  {
-    "question": "3 equipos con mas puntos",
-    "dataset": "TeamStats2026.csv",
-    "intent": null,
-    "ts": 1782344334.670798,
     "response": null
   },
   {
@@ -326,27 +347,6 @@
     "dataset": "players.csv",
     "intent": null,
     "ts": 1778962699.2269728,
-    "response": null
-  },
-  {
-    "question": "1 nombre del jugador y edad que hace mas puntos por partido",
-    "dataset": "players.csv",
-    "intent": null,
-    "ts": 1778961929.2038171,
-    "response": null
-  },
-  {
-    "question": "cual es el nombre del jugador y edad que hace mas puntos por partido",
-    "dataset": "players.csv",
-    "intent": null,
-    "ts": 1778961899.1552842,
-    "response": null
-  },
-  {
-    "question": "cual es la edad del player que hace mas puntos por partido",
-    "dataset": "players.csv",
-    "intent": null,
-    "ts": 1778961823.0820496,
     "response": null
   }
 ]

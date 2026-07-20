@@ -1,25 +1,13 @@
 import streamlit as st
-
-from ui.services.dataset_service import (
-    DatasetService
-)
-
-from ui.services.active_dataset_service import (
-    ActiveDatasetService
-)
+from ui.services.dataset_service import DatasetService
+from ui.services.active_dataset_service import ActiveDatasetService
 
 
 def render_dataset_panel():
 
-    st.session_state.setdefault(
+    active_datasets = st.session_state.setdefault(
         "active_datasets",
         []
-    )
-
-    active_datasets = (
-        st.session_state[
-            "active_datasets"
-        ]
     )
 
     available_datasets = (
@@ -32,52 +20,71 @@ def render_dataset_panel():
     ):
 
         for dataset in available_datasets:
-
-            col1, col2, col3 = (
-                st.columns([4, 1, 1])
+            render_dataset_row(
+                dataset,
+                active_datasets
             )
 
-            with col1:
+    render_active_summary(
+        active_datasets
+    )
 
-                st.write(
-                    dataset
-                )
 
-            with col2:
+def render_dataset_row(
+    dataset,
+    active_datasets
+):
 
-                if dataset in active_datasets:
+    col1, col2, col3 = (
+        st.columns([4, 1, 1])
+    )
 
-                    st.success(
-                        "Active"
-                    )
+    is_active = (
+        dataset in active_datasets
+    )
 
-                else:
+    with col1:
+        st.write(dataset)
 
-                    if st.button(
-                        "Add",
-                        key=f"add_{dataset}"
-                    ):
+    with col2:
 
-                        ActiveDatasetService.add(
-                            dataset
-                        )
+        if is_active:
 
-                        st.rerun()
+            st.success(
+                "Active"
+            )
 
-            with col3:
+        elif st.button(
+            "Add",
+            key=f"add_{dataset}"
+        ):
 
-                if dataset in active_datasets:
+            ActiveDatasetService.add(
+                dataset
+            )
 
-                    if st.button(
-                        "Remove",
-                        key=f"remove_{dataset}"
-                    ):
+            st.rerun()
 
-                        ActiveDatasetService.remove(
-                            dataset
-                        )
+    with col3:
 
-                        st.rerun()
+        if not is_active:
+            return
+
+        if st.button(
+            "Remove",
+            key=f"remove_{dataset}"
+        ):
+
+            ActiveDatasetService.remove(
+                dataset
+            )
+
+            st.rerun()
+
+
+def render_active_summary(
+    active_datasets
+):
 
     if active_datasets:
 
@@ -88,8 +95,8 @@ def render_dataset_panel():
             )
         )
 
-    else:
+        return
 
-        st.warning(
-            "No datasets selected."
-        )
+    st.warning(
+        "No datasets selected."
+    )

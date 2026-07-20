@@ -1,94 +1,122 @@
-def build_semantic_layer(columns, aliases=None, metrics=None):
+def build_semantic_layer(
+    columns,
+    aliases=None,
+    metrics=None,
+    dimensions=None,
+):
     return {
         "columns": columns,
         "aliases": aliases or {},
-        "metrics": metrics or {}
+        "metrics": metrics or {},
+        "dimensions": dimensions or {},
     }
 
-def detect_metric(q: str, semantic_layer):
-    if not semantic_layer:
-        return None
 
-    metrics = semantic_layer.get("metrics", {})
+def normalize_aliases(values):
+    if values is None:
+        return []
 
-    for metric_name, config in metrics.items():
-        aliases = config.get("aliases", [])
+    if isinstance(values, str):
+        return [values]
 
-        candidates = [metric_name] + aliases
-
-        if any(alias in q for alias in candidates):
-            return metric_name
-
-    return None
+    return values
 
 
-def detect_dimension(q: str, semantic_layer):
-    if not semantic_layer:
-        return None
+def aliases_match(query, aliases):
+    return any(
+        alias in query
+        for alias in normalize_aliases(aliases)
+    )
 
-    # 🔥 1. intentar dimensions (si algún día lo agregás)
-    dimensions = semantic_layer.get("dimensions", {})
 
-    for dim_name, config in dimensions.items():
-        aliases = config.get("aliases", [])
-        candidates = [dim_name] + aliases
+def find_by_alias(query, items):
+    for name, config in items.items():
+        candidates = [name] + normalize_aliases(
+            config.get("aliases")
+        )
 
-        if any(alias in q for alias in candidates):
-            return dim_name
-
-    # 🔥 2. fallback → aliases globales
-    aliases = semantic_layer.get("aliases", {})
-
-    for col, alias_list in aliases.items():
-        if isinstance(alias_list, list):
-            if any(a in q for a in alias_list):
-                return col
-        else:
-            if alias_list in q:
-                return col
+        if aliases_match(query, candidates):
+            return name
 
     return None
 
 
+def detect_metric(query, semantic_layer):
+    if not semantic_layer:
+        return None
+
+    return find_by_alias(
+        query,
+        semantic_layer.get("metrics", {}),
+    )
+
+
+def detect_dimension(query, semantic_layer):
+    if not semantic_layer:
+        return None
+
+    dimension = find_by_alias(
+        query,
+        semantic_layer.get("dimensions", {}),
+    )
+
+    if dimension:
+        return dimension
+
+    aliases = {
+        column: {
+            "aliases": normalize_aliases(values)
+        }
+        for column, values in semantic_layer.get(
+            "aliases", {}
+        ).items()
+    }
+
+    return find_by_alias(query, aliases)
+
+
+def merge_aliases(base_aliases, extra_aliases):
+    merged = base_aliases.copy()
+
+    for column, values in extra_aliases.items():
+        existing = normalize_aliases(
+            merged.get(column)
+        )
+
+        merged[column] = list(
+            dict.fromkeys(
+                existing
+                + normalize_aliases(values)
+            )
+        )
+
+    return merged
 
 
 def merge_semantic_layers(base_layer, extra_layer):
-    # Si uno es None → devolver el otro
     if not base_layer:
         return extra_layer
 
     if not extra_layer:
         return base_layer
 
-    merged = {
-        "columns": list(set(base_layer.get("columns", []) + extra_layer.get("columns", []))),
-        "aliases": {},
-        "metrics": {}
+    return {
+        "columns": list(
+            dict.fromkeys(
+                base_layer.get("columns", [])
+                + extra_layer.get("columns", [])
+            )
+        ),
+        "aliases": merge_aliases(
+            base_layer.get("aliases", {}),
+            extra_layer.get("aliases", {}),
+        ),
+        "metrics": {
+            **base_layer.get("metrics", {}),
+            **extra_layer.get("metrics", {}),
+        },
+        "dimensions": {
+            **base_layer.get("dimensions", {}),
+            **extra_layer.get("dimensions", {}),
+        },
     }
-
-    # -------------------------
-    # MERGE ALIASES
-    # -------------------------
-    merged["aliases"] = base_layer.get("aliases", {}).copy()
-
-    for col, values in extra_layer.get("aliases", {}).items():
-
-        existing = merged["aliases"].get(col, [])
-
-        if isinstance(existing, str):
-            existing = [existing]
-
-        if isinstance(values, str):
-            values = [values]
-
-        merged["aliases"][col] = list(set(existing + values))
-
-    # -------------------------
-    # MERGE METRICS
-    # -------------------------
-    merged["metrics"] = base_layer.get("metrics", {}).copy()
-
-    # 🔥 extra pisa base si hay conflicto
-    merged["metrics"].update(extra_layer.get("metrics", {}))
-
-    return merged

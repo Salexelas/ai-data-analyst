@@ -1,54 +1,72 @@
-from connectors.duckdb import DuckDBConnector
-from connectors.postgres import PostgresConnector
-from connectors.mysql import MySQLConnector
 from connectors.api import APIConnector
-from connectors.excel import ExcelConnector
 from connectors.csv import CSVConnector
+from connectors.duckdb import DuckDBConnector
+from connectors.excel import ExcelConnector
 from connectors.googleSheets import GoogleSheetsConnector
+from connectors.mysql import MySQLConnector
+from connectors.postgres import PostgresConnector
+
+
+def get_file_source(config):
+    """Return the configured file source."""
+
+    source = config.get("file_path") or config.get("file")
+
+    if source is None:
+        raise ValueError(
+            "Missing 'file_path' or 'file' in config."
+        )
+
+    return source
+
+
+def create_duckdb(config):
+    return DuckDBConnector(get_file_source(config))
+
+
+def create_excel(config):
+    return ExcelConnector(get_file_source(config))
+
+
+def create_csv(config):
+    return CSVConnector(get_file_source(config))
+
+
+def create_postgres(config):
+    return PostgresConnector(config["uri"])
+
+
+def create_mysql(config):
+    return MySQLConnector(config["uri"])
+
+
+def create_api(config):
+    return APIConnector(config["base_url"])
+
+
+def create_google_sheets(config):
+    return GoogleSheetsConnector(config["url"])
+
+
+CONNECTOR_FACTORIES = {
+    "duckdb": create_duckdb,
+    "excel": create_excel,
+    "csv": create_csv,
+    "postgres": create_postgres,
+    "mysql": create_mysql,
+    "api": create_api,
+    "google_sheets": create_google_sheets,
+}
 
 
 def create_connector(source_type, config):
+    """Create the requested connector."""
 
-    # 🔹 helper: prioriza file_path sobre file
-    def get_file_source(config):
-        if "file_path" in config:
-            return config["file_path"]
-        elif "file" in config:
-            return config["file"]
-        else:
-            raise ValueError("Missing file or file_path in config")
+    try:
+        factory = CONNECTOR_FACTORIES[source_type]
+    except KeyError as exc:
+        raise ValueError(
+            f"Unsupported data source: {source_type}"
+        ) from exc
 
-    # -------------------------
-    # 📁 FILE-BASED CONNECTORS
-    # -------------------------
-    if source_type == "duckdb":
-        return DuckDBConnector(config.get("file_path") or config.get("file"))
-
-    elif source_type == "excel":
-        source = get_file_source(config)
-        return ExcelConnector(source)
-
-    elif source_type == "csv":
-        source = get_file_source(config)
-        return CSVConnector(source)
-
-    # -------------------------
-    # 🗄️ DATABASES
-    # -------------------------
-    elif source_type == "postgres":
-        return PostgresConnector(config["uri"])
-
-    elif source_type == "mysql":
-        return MySQLConnector(config["uri"])
-
-    # -------------------------
-    # 🌐 EXTERNAL
-    # -------------------------
-    elif source_type == "api":
-        return APIConnector(config["base_url"])
-
-    elif source_type == "google_sheets":
-        return GoogleSheetsConnector(config["url"])
-
-    else:
-        raise ValueError(f"Unsupported data source: {source_type}")
+    return factory(config)

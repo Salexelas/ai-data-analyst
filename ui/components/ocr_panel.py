@@ -15,15 +15,12 @@ def render_ocr_panel():
     if not uploaded_file:
         return
 
-    # =========================
-    # OCR STEP
-    # =========================
     if st.button("Process image"):
 
         with st.spinner("Reading image..."):
-
-            text = OCRPipeline.extract(uploaded_file)
-            st.session_state["ocr_text"] = text
+            st.session_state["ocr_text"] = OCRPipeline.extract(
+                uploaded_file
+            )
 
     text = st.session_state.get("ocr_text")
 
@@ -36,28 +33,37 @@ def render_ocr_panel():
         height=250
     )
 
-    # =========================
-    # SIMPLE INPUT
-    # =========================
     columns = st.text_input(
         "Columns (comma separated)"
     )
 
-    if st.button("Generate dataset"):
+    generate_dataset(
+        text,
+        columns
+    )
 
-        df = OCRPipeline.build_dataframe(
-            raw_text=text,
-            columns=columns,
-            context="",
-            examples="",
-            llm=st.session_state["llm"]
-        )
+    preview_dataset()
 
-        st.session_state["ocr_df"] = df
 
-    # =========================
-    # PREVIEW + SAVE
-    # =========================
+def generate_dataset(
+    text,
+    columns
+):
+
+    if not st.button("Generate dataset"):
+        return
+
+    st.session_state["ocr_df"] = OCRPipeline.build_dataframe(
+        raw_text=text,
+        columns=columns,
+        context="",
+        examples="",
+        llm=st.session_state["llm"]
+    )
+
+
+def preview_dataset():
+
     df = st.session_state.get("ocr_df")
 
     if df is None:
@@ -69,18 +75,24 @@ def render_ocr_panel():
         num_rows="dynamic"
     )
 
-    errors = OCRPipeline.validate(edited_df)
+    errors = OCRPipeline.validate(
+        edited_df
+    )
 
     if errors:
-        for e in errors:
-            st.error(e)
+        for error in errors:
+            st.error(error)
         return
 
     st.success("Dataset valid ✔")
 
-    if st.button("Save dataset"):
+    if not st.button("Save dataset"):
+        return
 
-        result = OCRPipeline.save(edited_df, prefix="ocr_simple")
+    result = OCRPipeline.save(
+        edited_df,
+        prefix="ocr_simple"
+    )
 
-        st.success(result["dataset_id"])
-        st.rerun()
+    st.success(result["dataset_id"])
+    st.rerun()

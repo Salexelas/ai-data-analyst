@@ -14,57 +14,103 @@ TYPE_OPTIONS = [
 
 class TypeService:
 
+    DETECTION_RULES = [
+        ("datetime", "datetime"),
+        ("bool", "boolean"),
+        ("int", "number"),
+        ("float", "number"),
+    ]
+
+    CONVERTERS = {
+        "datetime": (
+            pd.to_datetime,
+            {
+                "dayfirst": True,
+                "errors": "coerce",
+            },
+        ),
+        "number": (
+            pd.to_numeric,
+            {
+                "errors": "coerce",
+            },
+        ),
+        "category": (
+            pd.Series.astype,
+            {
+                "dtype": "category",
+            },
+        ),
+        "text": (
+            pd.Series.astype,
+            {
+                "dtype": "string",
+            },
+        ),
+    }
+
     @staticmethod
     def detect(series):
 
         dtype = str(series.dtype)
 
-        if "datetime" in dtype:
-            return "datetime"
+        for pattern, detected_type in TypeService.DETECTION_RULES:
 
-        if "int" in dtype or "float" in dtype:
-            return "number"
-
-        if "bool" in dtype:
-            return "boolean"
+            if pattern in dtype:
+                return detected_type
 
         return "text"
 
     @staticmethod
-    def apply(df, schema):
+    def _to_boolean(series):
 
-        df = df.copy()
+        return (
+            series
+            .astype("string")
+            .str.strip()
+            .str.lower()
+            .map({
+                "true": True,
+                "false": False,
+                "1": True,
+                "0": False,
+                "yes": True,
+                "no": False,
+            })
+        )
 
-        for col, dtype in schema.items():
+@staticmethod
+def apply(df, schema):
 
-            if col not in df.columns:
-                continue
+    df = df.copy()
 
-            try:
+    for col, dtype in schema.items():
 
-                if dtype == "datetime":
-                    df[col] = pd.to_datetime(
-                        df[col],
-                        dayfirst=True,
-                        errors="coerce"
-                    )
+        if col not in df.columns:
+            continue
 
-                elif dtype == "number":
-                    df[col] = pd.to_numeric(
-                        df[col],
-                        errors="coerce"
-                    )
+        TypeService._apply_column(df, col, dtype)
 
-                elif dtype == "boolean":
-                    df[col] = df[col].astype("bool")
+    return df
 
-                elif dtype == "category":
-                    df[col] = df[col].astype("category")
 
-                elif dtype == "text":
-                    df[col] = df[col].astype("string")
+@staticmethod
+def _apply_column(df, col, dtype):
 
-            except Exception:
-                pass
+    try:
 
-        return df
+        if dtype == "boolean":
+            df[col] = TypeService._to_boolean(df[col])
+            return
+
+        converter = TypeService.CONVERTERS.get(dtype)
+
+        if not converter:
+            return
+
+        func, kwargs = converter
+
+        df[col] = func(df[col], **kwargs)
+
+    except (ValueError, TypeError):
+        pass

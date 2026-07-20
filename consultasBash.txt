@@ -30,7 +30,7 @@ ForEach-Object {
 
 /////////////////////////////lineas contrador ///////////////////////////////////
 
-radon raw agents core connectors semantic tools ui |
+radon raw agents core dataset_editor pipeline rederers router connectors services semantic tools ui |
 Select-String -Pattern "\.py|LOC" |
 ForEach-Object { $_.ToString() } |
 ForEach-Object -Begin {$file=""} -Process {

@@ -29,3 +29,10 @@ pillow
 python-docx
 paddlepaddle
 paddleocr
+lizard
+pydeps
+coverage
+pytest pytest-cov
+wily
+xenon
+pyan3

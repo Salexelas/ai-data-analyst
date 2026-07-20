@@ -1,135 +1,127 @@
 import streamlit as st
 import plotly.express as px
 
-from ui.components.charts.chart_filters import (
-    apply_filters
-)
+from ui.components.charts.chart_aggregations import apply_aggregation
+from ui.components.charts.chart_filters import apply_filters
 
-from ui.components.charts.chart_aggregations import (
-    apply_aggregation
-)
+
+CHART_BUILDERS = {
+    "line": px.line,
+    "scatter": px.scatter,
+    "bar": px.bar,
+}
+
+
+def unpack_config(config):
+    return (
+        config["chart_type"],
+        config["x"],
+        config["y"],
+        config["aggregation"],
+        config["group_by"],
+        config["filters"],
+    )
+
+
+def prepare_chart_data(
+    df,
+    x_col,
+    y_col,
+    aggregation,
+    group_col,
+    filters,
+):
+    df = apply_filters(df, filters)
+
+    if str(df[x_col].dtype).startswith("datetime"):
+        df = df.sort_values(x_col)
+
+    return apply_aggregation(
+        df,
+        x_col,
+        y_col,
+        aggregation,
+        group_col,
+    )
+
+
+def build_chart(
+    chart_type,
+    chart_df,
+    x_col,
+    y_axis,
+    group_col,
+):
+    if chart_type == "pie":
+        return px.pie(
+            chart_df,
+            names=x_col,
+            values=y_axis,
+        )
+
+    builder = CHART_BUILDERS.get(chart_type)
+
+    if builder is None:
+        raise ValueError(f"Unsupported chart type: {chart_type}")
+
+    color = None if group_col == "Sin grupo" else group_col
+
+    return builder(
+        chart_df,
+        x=x_col,
+        y=y_axis,
+        color=color,
+    )
+
+
+def render_chart_output(fig, chart_df):
+    st.plotly_chart(
+        fig,
+        width="stretch",
+    )
+
+    with st.expander("📄 Ver datos"):
+        st.dataframe(
+            chart_df,
+            width="stretch",
+        )
 
 
 def render_chart(df, config):
-
     if not st.button("Generar gráfico"):
-
         return
 
     try:
+        (
+            chart_type,
+            x_col,
+            y_col,
+            aggregation,
+            group_col,
+            filters,
+        ) = unpack_config(config)
 
-        # ==================================================
-        # CONFIG
-        # ==================================================
-        chart_type = config["chart_type"]
-        x_col = config["x"]
-        y_col = config["y"]
-        aggregation = config["aggregation"]
-        group_col = config["group_by"]
-        filters = config["filters"]
-
-        # ==================================================
-        # FILTERS
-        # ==================================================
-        df = apply_filters(
-            df,
-            filters
-        )
-
-        # ==================================================
-        # SORT DATETIME
-        # ==================================================
-        if str(df[x_col].dtype).startswith("datetime"):
-
-            df = df.sort_values(x_col)
-
-        # ==================================================
-        # AGGREGATION
-        # ==================================================
-        chart_df, y_axis = apply_aggregation(
+        chart_df, y_axis = prepare_chart_data(
             df,
             x_col,
             y_col,
             aggregation,
-            group_col
+            group_col,
+            filters,
         )
 
-        # ==================================================
-        # LINE
-        # ==================================================
-        if chart_type == "line":
+        fig = build_chart(
+            chart_type,
+            chart_df,
+            x_col,
+            y_axis,
+            group_col,
+        )
 
-            fig = px.line(
-                chart_df,
-                x=x_col,
-                y=y_axis,
-                color=None
-                if group_col == "Sin grupo"
-                else group_col
-            )
-
-        # ==================================================
-        # SCATTER
-        # ==================================================
-        elif chart_type == "scatter":
-
-            fig = px.scatter(
-                chart_df,
-                x=x_col,
-                y=y_axis,
-                color=None
-                if group_col == "Sin grupo"
-                else group_col
-            )
-
-        # ==================================================
-        # BAR
-        # ==================================================
-        elif chart_type == "bar":
-
-            fig = px.bar(
-                chart_df,
-                x=x_col,
-                y=y_axis,
-                color=None
-                if group_col == "Sin grupo"
-                else group_col
-            )
-
-        # ==================================================
-        # PIE
-        # ==================================================
-        elif chart_type == "pie":
-
-            fig = px.pie(
-                chart_df,
-                names=x_col,
-                values=y_axis
-            )
-
-        else:
-
-            st.error("Tipo no soportado")
-            return
-
-        # ==================================================
-        # RENDER
-        # ==================================================
-        st.plotly_chart(
+        render_chart_output(
             fig,
-            width="stretch"
+            chart_df,
         )
 
-        # ==================================================
-        # DATA
-        # ==================================================
-        with st.expander("📄 Ver datos"):
-
-            st.dataframe(
-                chart_df,
-                width="stretch"
-            )
-
-    except Exception as e:
-
-        st.error(f"Error generando gráfico: {e}")
+    except Exception as exc:
+        st.error(f"Error generating chart: {exc}")

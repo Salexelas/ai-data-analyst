@@ -1,62 +1,48 @@
 import json
 import re
+
 from agents.filters import normalize_query_for_intent
-from semantic.semantic_layer import detect_metric, detect_dimension
+from semantic.semantic_layer import detect_dimension, detect_metric
 
 
-def normalize_intent(intent: dict):
+INTENT_KEYWORDS = {
+    "top": ["top", "mas", "mayores"],
+    "bottom": ["bottom", "menos", "peores"],
+    "average": ["promedio", "average"],
+    "total": ["total", "suma"],
+}
+
+UNKNOWN_INTENT = {
+    "intent": "unknown",
+    "metric": None,
+    "dimension": None,
+    "limit": None,
+}
+
+
+def normalize_intent(intent: dict) -> dict:
     return {
         "intent": intent.get("intent"),
         "metric": intent.get("metric"),
         "dimension": intent.get("dimension"),
-        "limit": int(intent.get("limit")) if intent.get("limit") else None
+        "limit": int(intent.get("limit")) if intent.get("limit") else None,
     }
 
-def detect_intent(question: str, llm, semantic_layer=None):
 
-    q = normalize_query_for_intent(question)
+def detect_fast_intent(query: str) -> str | None:
+    for intent, keywords in INTENT_KEYWORDS.items():
+        if any(keyword in query for keyword in keywords):
+            return intent
+    return None
 
-    # -------------------------
-    # INTENT
-    # -------------------------
-    if any(x in q for x in ["top", "mas", "mayores"]):
-        intent = "top"
-    elif any(x in q for x in ["bottom", "menos", "peores"]):
-        intent = "bottom"
-    elif any(x in q for x in ["promedio", "average"]):
-        intent = "average"
-    elif any(x in q for x in ["total", "suma"]):
-        intent = "total"
-    else:
-        intent = None
 
-    # -------------------------
-    # LIMIT
-    # -------------------------
-    limit_match = re.search(r"\b(\d+)\b", q)
-    limit = int(limit_match.group(1)) if limit_match else None
+def detect_limit(query: str) -> int | None:
+    match = re.search(r"\b(\d+)\b", query)
+    return int(match.group(1)) if match else None
 
-    # -------------------------
-    # 🔥 METRIC + DIMENSION (GENÉRICO)
-    # -------------------------
-    metric = detect_metric(q, semantic_layer)
-    dimension = detect_dimension(q, semantic_layer)
 
-    # -------------------------
-    # FAST PATH
-    # -------------------------
-    if intent:
-        return normalize_intent({
-            "intent": intent,
-            "metric": metric,
-            "dimension": dimension,
-            "limit": limit
-        })
-
-    # -------------------------
-    # FALLBACK LLM
-    # -------------------------
-    prompt = f"""
+def build_llm_prompt(question: str) -> str:
+    return f"""
 Classify the user intent.
 
 Return ONLY JSON:
@@ -72,15 +58,36 @@ Question:
 {question}
 """
 
-    raw = llm.generate(prompt, system_prompt="Intent classifier")
+
+def detect_llm_intent(question: str, llm) -> dict:
+    raw = llm.generate(
+        build_llm_prompt(question),
+        system_prompt="Intent classifier",
+    )
 
     try:
-        parsed = json.loads(raw)
-        return normalize_intent(parsed)
-    except:
-        return {
-            "intent": "unknown",
-            "metric": None,
-            "dimension": None,
-            "limit": None
-        }
+        return normalize_intent(json.loads(raw))
+    except (json.JSONDecodeError, TypeError, ValueError):
+        return UNKNOWN_INTENT.copy()
+
+
+def detect_intent(question: str, llm, semantic_layer=None) -> dict:
+    query = normalize_query_for_intent(question)
+
+    intent = detect_fast_intent(query)
+    limit = detect_limit(query)
+
+    metric = detect_metric(query, semantic_layer)
+    dimension = detect_dimension(query, semantic_layer)
+
+    if intent:
+        return normalize_intent(
+            {
+                "intent": intent,
+                "metric": metric,
+                "dimension": dimension,
+                "limit": limit,
+            }
+        )
+
+    return detect_llm_intent(question, llm)
