@@ -36,3 +36,5 @@ pytest pytest-cov
 wily
 xenon
 pyan3
+fastapi 
+uvicorn

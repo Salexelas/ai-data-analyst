@@ -89,7 +89,4 @@ def execute_plan(plan, connector):
         "type": "table",
         "data": context["last_result"],
         "explanation": context.get("explanation")
-    }
-
-
-'''
+    }'''

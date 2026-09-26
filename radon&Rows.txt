@@ -1,0 +1,54 @@
+///////////////////////
+
+Radon:
+
+F 66:0 render_chat - D (21) 
+    F 15:0 render_data - C (18)
+    F 5:0 render_sidebar - C (15)
+    F 51:0 render_datasets - C (15)
+    F 14:0 render_ocr_studio - C (14)
+    F 7:0 guard_sql - C (14)
+    F 5:0 render_semantic - C (14)
+    F 159:0 detect_intent - C (13)
+    F 119:0 detect_dimension - C (13)
+    M 163:4 SQLBuilder._build_where - C (13)
+    M 27:4 SQLBuilder.build - C (11)
+    F 13:0 render_chart - C (11)
+    F 450:0 _resolve_entities - B (10)
+    M 133:4 SQLBuilder._build_join - B (10)
+    F 24:0 resolve_entity - B (10)
+    F 10:0 create_connector - B (9)
+    F 44:0 detect_relationships - B (8)
+
+
+//////////////////////////////////////
+
+rows:
+
+agents\steps.py                             630
+ui\pages\chat.py                            367
+agents\sql_generator.py                     271
+ui\pages\datasets.py                        270
+ui\pages\data.py                            259
+ui\pages\chat.py                            242
+agents\intent_detector.py                   231
+agents\sql_builder.py                       219
+agents\steps.py                             210
+semantic\semantic_layer.py                  176
+agents\sql_builder.py                       170
+ui\pages\data.py                            167
+ui\pages\ocr_studio.py                      166
+ui\pages\datasets.py                        154
+agents\steps.py                             152
+agents\sql_builder.py                       143
+ui\pages\dataset_info.py                    137
+ui\components\charts\chart_renderer.py      135
+agents\filters.py                           134
+agents\sql_retry.py                         134
+connectors\multi_connector.py               128
+agents\intent_detector.py                   114
+ui\components\sidebar.py                    112
+agents\entity_resolver.py                   112
+ui\pages\ocr_studio.py                      108
+ui\pages\chat.py                            101
+ui\pages\semantic.py                        100 

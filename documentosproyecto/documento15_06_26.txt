@@ -1,0 +1,127 @@
+app.py
+import streamlit as st
+
+from ui.components.sidebar import render_sidebar
+
+from core.session_manager import initialize_session
+from core.startup_service import autoload_last_dataset
+from router.routes import ROUTES
+
+st.set_page_config(layout="wide")
+
+
+def main():
+
+    initialize_session()
+    autoload_last_dataset()
+
+    render_sidebar()
+
+    page = st.session_state.get("page", "chat")
+    ROUTES.get(page, ROUTES["chat"])()
+
+
+if __name__ == "__main__":
+    main()
+
+
+
+
+
+
+
+
+
+
+
+starup_service.py
+import os
+import streamlit as st
+
+from connectors.factory import create_connector
+
+DATA_PATH = "data"
+
+
+def autoload_last_dataset():
+
+    if st.session_state["connector"] is not None:
+        return
+
+    if not os.path.exists(DATA_PATH):
+        return
+
+    files = sorted(os.listdir(DATA_PATH), reverse=True)
+
+    if not files:
+        return
+
+    last_file = files[0]
+    file_path = os.path.join(DATA_PATH, last_file)
+
+    if last_file.endswith(".csv"):
+        file_type = "csv"
+
+    elif last_file.endswith(".xlsx"):
+        file_type = "excel"
+
+    else:
+        return
+
+    try:
+
+        connector = create_connector(
+            file_type,
+            {"file_path": file_path}
+        )
+
+        st.session_state["connector"] = connector
+        st.session_state["file_path"] = file_path
+        st.session_state["dataset_id"] = last_file
+
+    except Exception as e:
+        st.warning(f"No se pudo cargar dataset: {e}")
+
+
+
+
+
+
+
+
+sesion_manager.py
+import streamlit as st
+from core.llm_service import LLMService
+
+
+DEFAULT_STATE = {
+    "llm": None,
+    "page": "chat",
+    "connector": None,
+    "dataset_id": None,
+    "file_path": None,
+    "semantic_layer": None,
+    "recent_queries": [
+        "ventas por producto",
+        "top clientes",
+        "forecast ventas"
+    ]
+}
+
+
+def initialize_session():
+
+    for key, value in DEFAULT_STATE.items():
+        if key not in st.session_state:
+            st.session_state[key] = value
+
+    if st.session_state["llm"] is None:
+        st.session_state["llm"] = LLMService()
+
+
+
+
+
+
+
+       

@@ -30,24 +30,3 @@ class DuckDBConnector(BaseConnector):
 
     def preview(self, limit=10):
         return self.con.execute(f"SELECT * FROM {self.table_name} LIMIT {limit}").df()
-
-
-'''
-5. ❌ Schema crudo (muy difícil para el LLM)
-
-Ejemplo:
-
-return self.con.execute(f"DESCRIBE {self.table_name}").fetchdf()
-
-👉 Problema:
-
-El LLM recibe:
-tablas sin contexto
-sin relaciones
-sin significado de negocio
-
-👉 Resultado:
-
-malas queries
-
-'''
