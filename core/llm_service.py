@@ -2,7 +2,12 @@ from core.observability import log_event
 from core.llm import call_llm
 
 class LLMService:
-    def generate(self, prompt: str, system_prompt: str, trace_id: str = None) -> str:
+    def generate(
+        self, 
+        prompt: str, 
+        system_prompt: str = "You are a helpful AI",  # <-- Valor por defecto
+        trace_id: str = None
+    ) -> str:
 
         if trace_id:
             log_event(

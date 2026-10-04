@@ -1,3 +1,14 @@
+//////levantar FAST API/////////
+uvicorn api.main:app --reload
+//////////////
+
+
+/////////entoncrno Virtual///////////////
+.\venv\Scripts\Activate.ps1
+////////////////////////////
+
+
+
 //////////////////radon para funciones en carpetas/////////////////////
 
 Radon 

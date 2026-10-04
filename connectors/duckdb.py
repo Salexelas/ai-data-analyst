@@ -25,6 +25,10 @@ class DuckDBConnector(BaseConnector):
     def execute(self, query):
         return self.con.execute(query).df()
 
+    # ✅ ALIAS: Si algún componente llama a .exec() en lugar de .execute()
+    def exec(self, query):
+        return self.execute(query)
+
     def get_schema(self):
         return self.con.execute(f"DESCRIBE {self.table_name}").df()
 

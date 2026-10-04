@@ -1,108 +1,130 @@
 from agents.sql_generator import (
     generate_sql_structured,
 )
-
-from agents.sql_repair import (
-    repair_sql_generation,
-)
-
-from agents.sql_validation import (
-    validate_sql,
-)
-
-from agents.sql_generator import (
-    LLMOutputFormatError,
-)
+from agents.sql_repair import repair_sql_generation
+from agents.sql_validation import validate_sql
 
 
-def should_retry(error: str):
+def should_retry(error: str) -> bool:
+    error_lower = error.lower()
 
-    error = error.lower()
-
-    retryable = [
-        "invalid json",
+    retryable_patterns = [
+        "json",
         "missing 'sql'",
-        "sql inválido",
-        "columnas inválidas",
-        "tabla inválida",
-        "solo select",
-        "demasiados joins",
-        "expecting value",
-        "invalid json: empty response",
+        "invalid sql",
+        "column",
+        "table",
+        "select",
     ]
 
     return any(
-        x in error
-        for x in retryable
+        pattern in error_lower
+        for pattern in retryable_patterns
     )
 
 
 def generate_sql_with_retry(
-    question,
-    schema,
-    semantic_layer,
-    columns,
+    question: str,
+    schema_columns: list[str],
+    semantic_layer: dict,
     llm,
-    language="en",
-    intent=None,
-    relationships=None,
-    max_retries=2,
-):
+    taxonomies: dict = None,
+    examples: list = None,
+    intent: dict = None,
+    max_retries: int = 2,
+) -> str:
 
     last_error = None
     previous_output = None
 
-    for _ in range(
-        max_retries + 1
-    ):
+    # ---------------------------------------------------------
+    # Tabla permitida
+    # ---------------------------------------------------------
+
+    dataset_id = (
+        semantic_layer.get("dataset_id")
+        if isinstance(semantic_layer, dict)
+        else None
+    )
+
+    allowed_tables = (
+        [dataset_id]
+        if dataset_id
+        else None
+    )
+
+    # ---------------------------------------------------------
+    # Retry loop
+    # ---------------------------------------------------------
+
+    for attempt in range(max_retries + 1):
+
+        parsed = None
 
         try:
 
+            # =================================================
+            # Primera generación
+            # =================================================
+
             if previous_output is None:
 
-                parsed = (
-                    generate_sql_structured(
-                        question=question,
-                        schema=schema,
-                        semantic_layer=semantic_layer,
-                        llm=llm,
-                        language=language,
-                        intent=intent,
-                        relationships=relationships,
-                    )
+                parsed = generate_sql_structured(
+                    question=question,
+                    semantic_layer=semantic_layer,
+                    llm=llm,
+                    taxonomies=taxonomies,
+                    examples=examples,
+                    intent=intent,
                 )
+                print("\n" + "=" * 80)
+                print("SQL GENERATION DEBUG")
+                print("=" * 80)
+                print("QUESTION:")
+                print(question)
+                print("\nPARSED OUTPUT:")
+                print(parsed)
+                print("=" * 80 + "\n")
+
+            # =================================================
+            # Reparación
+            # =================================================
 
             else:
 
-                parsed = (
-                    repair_sql_generation(
-                        question=question,
-                        schema=schema,
-                        semantic_layer=semantic_layer,
-                        intent=intent,
-                        relationships=relationships,
-                        previous_output=previous_output,
-                        error=last_error,
-                        llm=llm,
-                    )
+                parsed = repair_sql_generation(
+                    question=question,
+                    schema=schema_columns,
+                    semantic_layer=semantic_layer,
+                    intent=intent,
+                    previous_output=previous_output,
+                    error=last_error,
+                    llm=llm,
                 )
 
+            # =================================================
+            # Validación
+            # =================================================
+
             return validate_sql(
-                parsed,
-                schema,
-                columns,
+                parsed=parsed,
+                schema_columns=schema_columns,
+                allowed_tables=allowed_tables,
             )
 
         except Exception as e:
 
             last_error = str(e)
-            previous_output = parsed
 
-            if not should_retry(
-                last_error
-            ):
+            # Guardar la salida anterior si existe
+            if parsed is not None and parsed is not ...:
+                previous_output = parsed
+
+            # Si el error no es recuperable, salir inmediatamente
+            if not should_retry(last_error):
                 raise
 
     raise ValueError(
-        f"Failed after retries: {last_error}"
+        f"Fallo tras {max_retries} reintentos. "
+        f"Último error: {last_error}"
     )

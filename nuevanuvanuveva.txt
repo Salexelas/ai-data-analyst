@@ -1,0 +1,661 @@
+filters.py
+def is_valid_question(question: str) -> bool:
+    """Validación mínima de longitud e intención de texto."""
+    q = question.strip()
+    return len(q) >= 3 and any(c.isalpha() for c in q)
+
+service.py
+from typing import Union
+
+from pipeline.context_stage import build_context
+from pipeline.execution_stage import (
+    run_pre_pipeline,
+    run_main_pipeline,
+)
+from core.observability import new_trace_id
+from core.llm_service import LLMService
+
+
+def answer_question(
+    question: str,
+    dataset_ids: list[str] = None,
+    dataset_relations: list[dict] = None,
+    semantic_layer: dict = None,
+    taxonomies: dict = None,
+    examples: Union[list[dict], dict] = None,
+    inline_datasets: dict = None,
+    llm=None,
+    # Parámetros legacy
+    connector=None,
+    dataset_id: str = None,
+    **kwargs,
+):
+    """
+    Entry point principal del AI Agent Service.
+    Soporta consumo desde FastAPI, Streamlit y Slack.
+    """
+
+    trace_id = new_trace_id()
+
+    # 1. Fallback automático para LLM
+    if llm is None:
+        llm = LLMService()
+
+    # 2. Normalización de parámetros de entrada
+    if dataset_ids is None:
+        if dataset_id:
+            dataset_ids = [dataset_id]
+        else:
+            dataset_ids = []
+
+    try:
+        # 3. Construcción del contexto
+        ctx = build_context(
+            question=question,
+            dataset_ids=dataset_ids,
+            dataset_relations=dataset_relations,
+            semantic_layer=semantic_layer,
+            taxonomies=taxonomies,
+            examples=examples,
+            inline_datasets=inline_datasets,
+            connector=connector,
+            llm=llm,
+            trace_id=trace_id,
+        )
+
+        # 4. Pre-pipeline
+        ctx = run_pre_pipeline(
+            ctx,
+            llm,
+        )
+
+        # 5. Pipeline principal
+        response = run_main_pipeline(
+            ctx,
+            llm,
+        )
+
+        return response
+
+    except Exception:
+        print("\n" + "=" * 80)
+        print("ERROR REAL EN answer_question")
+        print("=" * 80)
+
+        import traceback
+        traceback.print_exc()
+
+        print("=" * 80 + "\n")
+
+        raise
+
+sql_generator.py
+import json
+
+
+class LLMOutputFormatError(Exception):
+    pass
+
+
+def format_examples(examples: list) -> str:
+    if not examples:
+        return ""
+    lines = ["EJEMPLOS DE REFERENCIA (Few-Shot):"]
+    for ex in examples:
+        lines.append(f"Pregunta: {ex.get('question')}\nSQL: {ex.get('sql', '').strip()}\n---")
+    return "\n".join(lines)
+
+
+def format_taxonomies(taxonomies: dict) -> str:
+    if not taxonomies:
+        return ""
+    return f"TAXONOMIAS Y VALORES CANONICOS:\n{json.dumps(taxonomies, indent=2, ensure_ascii=False)}"
+
+
+def build_sql_prompt(
+    question: str,
+    semantic_layer: dict,
+    taxonomies: dict = None,
+    examples: list = None,
+    intent: dict = None,
+) -> str:
+    
+    examples_text = format_examples(examples or [])
+    taxonomies_text = format_taxonomies(taxonomies or {})
+    intent_text = f"INTENT DETECTADO: {json.dumps(intent)}\n" if intent else ""
+
+    # Extraemos solo métricas y columnas para mantener el prompt compacto
+    compact_semantic = {
+        "dataset_id": semantic_layer.get("dataset_id"),
+        "columns": list(semantic_layer.get("columns", {}).keys()),
+        "metrics": semantic_layer.get("metrics", {}),
+        "aliases": semantic_layer.get("aliases", {}),
+    }
+
+    return f"""
+Eres un analista de datos experto en SQL. Genera la consulta SQL para responder a la pregunta.
+
+METADATOS DEL DATASET:
+{json.dumps(compact_semantic, indent=2, ensure_ascii=False)}
+
+{taxonomies_text}
+
+{examples_text}
+
+{intent_text}
+
+REGLAS DE ORO:
+1. Responde UNICAMENTE con un JSON válido: {{"sql": "SELECT ...", "confidence": 0.95}}
+2. Usa SOLO sentencias SELECT.
+3. Respeta las funciones y lógica mostrada en los ejemplos Few-Shot (ej. JULIANDAY, REPLACE, etc.).
+4. No agregues texto ni formato Markdown fuera del JSON.
+
+Pregunta del usuario:
+"{question}"
+"""
+
+
+def generate_sql_structured(
+    question: str,
+    semantic_layer: dict,
+    llm,
+    taxonomies: dict = None,
+    examples: list = None,
+    intent: dict = None,
+) -> str:  # Retorna str
+    
+    if isinstance(llm, dict):
+        raise TypeError(f"Se esperaba LLMService, se recibió dict: {llm}")
+
+    prompt = build_sql_prompt(
+        question=question,
+        semantic_layer=semantic_layer,
+        taxonomies=taxonomies,
+        examples=examples,
+        intent=intent,
+    )
+
+    raw = llm.generate(
+        prompt,
+        system_prompt="You are a senior data analyst. Return ONLY valid JSON.",
+    )
+
+    if not raw or not str(raw).strip():
+        raise LLMOutputFormatError("Respuesta vacía del LLM")
+
+    raw = str(raw).strip().replace("```json", "").replace("```", "").strip()
+
+    try:
+        parsed = json.loads(raw)
+    except Exception as e:
+        raise LLMOutputFormatError(f"Error al decodificar JSON: {raw}") from e
+
+    if "sql" not in parsed or not isinstance(parsed["sql"], str):
+        raise LLMOutputFormatError("Falta el campo 'sql' en el JSON devuelto")
+
+    # 🔑 CORRECCIÓN: Retornar solo el string de la consulta SQL
+    return parsed["sql"].strip()
+
+
+sql_guard.py
+import sqlglot
+from sqlglot import exp
+from core.settings import SQLConfig
+
+
+def guard_sql(
+    query: str,
+    schema_columns: list[str] | list[dict] | dict,
+    allowed_tables: list[str] | list[dict] | None = None,
+) -> str:
+    """Validate a SQL query before execution."""
+
+    if not query:
+        raise ValueError("Empty query")
+
+    try:
+        parsed = sqlglot.parse_one(query)
+    except Exception as exc:
+        raise ValueError("Invalid SQL") from exc
+
+    if not isinstance(parsed, exp.Select):
+        raise ValueError("Only SELECT statements are allowed")
+
+    # Normalizar entradas si provienen directamente del YAML
+    norm_tables = _normalize_to_list(allowed_tables)
+    norm_columns = _normalize_to_list(schema_columns)
+
+    _validate_tables(parsed, norm_tables)
+    _validate_columns(parsed, norm_columns)
+    _validate_joins(parsed)
+
+    if not parsed.args.get("limit"):
+        parsed.set(
+            "limit",
+            exp.Limit(
+                expression=exp.Literal.number(SQLConfig.MAX_ROWS)
+            ),
+        )
+
+    return parsed.sql()
+
+
+def _normalize_to_list(data) -> list[str]:
+    """Soporta listas de strings, listas de diccionarios YAML o claves de dicts."""
+    if not data:
+        return []
+    if isinstance(data, dict):
+        # Si es un dict tipo {'columns': ['a', 'b']} o {'col1': {...}}
+        return list(data.keys())
+    if isinstance(data, list):
+        result = []
+        for item in data:
+            if isinstance(item, str):
+                result.append(item)
+            elif isinstance(item, dict):
+                # Si en el YAML la columna es {'name': 'producto', 'type': 'str'}
+                val = item.get("name") or item.get("column") or item.get("id")
+                if val:
+                    result.append(str(val))
+        return result
+    return []
+
+
+def _validate_tables(
+    parsed: exp.Expression,
+    allowed_tables: list[str],
+) -> None:
+    if not allowed_tables:
+        return
+
+    used_tables = {
+        table.name.lower()
+        for table in parsed.find_all(exp.Table)
+    }
+
+    invalid_tables = (
+        used_tables
+        - {table.lower() for table in allowed_tables}
+    )
+
+    if invalid_tables:
+        raise ValueError(
+            f"Invalid tables: {sorted(invalid_tables)}"
+        )
+
+
+def _validate_columns(
+    parsed: exp.Expression,
+    schema_columns: list[str],
+) -> None:
+    if not schema_columns:
+        return
+
+    used_columns = {
+        column.name.lower()
+        for column in parsed.find_all(exp.Column)
+    }
+
+    allowed_set = {col.lower() for col in schema_columns}
+
+    invalid_columns = used_columns - allowed_set
+
+    if invalid_columns:
+        raise ValueError(
+            f"Invalid columns: {sorted(invalid_columns)}"
+        )
+
+
+def _validate_joins(
+    parsed: exp.Expression,
+) -> None:
+    joins = list(parsed.find_all(exp.Join))
+
+    if len(joins) > SQLConfig.MAX_JOINS:
+        raise ValueError("Too many JOINs")
+
+    if any(
+        join.args.get("kind") == "cross"
+        for join in joins
+    ):
+        raise ValueError("CROSS JOIN is not allowed")
+
+
+sql_repair.py
+import json
+
+
+def repair_sql_generation(
+    question,
+    schema,
+    semantic_layer,
+    intent,
+    relationships,
+    previous_output,
+    error,
+    llm,
+):
+
+    fix_prompt = f"""
+You generated an invalid SQL query.
+
+Fix it using the error.
+
+Context:
+Question: {question}
+
+Schema:
+{schema}
+
+Semantic Layer:
+{semantic_layer}
+
+Intent:
+{intent}
+
+Relationships:
+{relationships}
+
+Previous output:
+{previous_output}
+
+Error:
+{error}
+
+Rules:
+- Keep same intent
+- Use relationships if JOIN is needed
+- Preserve entity granularity
+- Do not invent columns
+- Fix ONLY the error
+- Return ONLY valid JSON
+
+Format:
+{{
+  "sql": "SELECT ...",
+  "confidence": 0.0-1.0
+}}
+"""
+
+    raw = llm.generate(
+        fix_prompt,
+        system_prompt="You fix SQL queries",
+    )
+
+    if not raw or not raw.strip():
+        raise ValueError(
+            "Invalid JSON"
+        )
+
+    raw = (
+        raw.strip()
+        .replace("```json", "")
+        .replace("```", "")
+        .strip()
+    )
+
+    decoder = json.JSONDecoder()
+
+    parsed, _ = (
+        decoder.raw_decode(raw)
+    )
+
+    return parsed
+
+
+sql_validation.py
+from agents.sql_guard import guard_sql
+
+def validate_sql(
+    parsed: str | dict,
+    schema_columns: list[str],
+    allowed_tables: list[str] = None
+) -> str:
+    # 1. Proteger contra Ellipsis (...) o None
+    if parsed is ... or parsed is None:
+        raise ValueError("SQL inválido: No se recibió ninguna consulta (recibido Ellipsis/None).")
+
+    # 2. Extraer el string SQL según el tipo
+    if isinstance(parsed, dict):
+        sql = parsed.get("sql", "")
+    elif isinstance(parsed, str):
+        sql = parsed
+    else:
+        sql = str(parsed)
+
+    # 3. Validar que sea un string válido y no esté vacío
+    sql_clean = sql.strip()
+
+    if not sql_clean or "select" not in sql_clean.lower():
+        raise ValueError("SQL inválido: Debe contener una instrucción SELECT.")
+
+    if len(sql_clean) < 10:
+        raise ValueError("SQL demasiado corto.")
+
+    # 4. Guard de seguridad en el SQL
+    return guard_sql(
+        sql_clean,
+        schema_columns,
+        allowed_tables=allowed_tables,
+    )
+
+
+
+
+context_stage.py
+from typing import Any, Optional
+from core.dataset_store import DatasetStore
+
+
+def build_context(
+    question: str,
+    dataset_id: str = None,
+    dataset_ids: list[str] = None,
+    dataset_relations: list[dict] = None,
+    semantic_layer: dict = None,
+    taxonomies: dict = None,
+    examples: list = None,
+    inline_datasets: dict = None,
+    connector=None,
+    llm=None,
+    trace_id: str = None,
+    **kwargs,
+) -> dict:
+    """Construye el contexto.
+
+    Registra el YAML la primera vez y lo reutiliza de memoria en subsecuentes
+    preguntas.
+    """
+    target_id = (
+        dataset_id
+        or (dataset_ids[0] if dataset_ids else None)
+        or (semantic_layer.get("dataset_id") if semantic_layer else None)
+    )
+
+    # 1. Si enviaron el YAML completo en este request, registrarlo / actualizarlo en memoria
+    if semantic_layer and "columns" in semantic_layer:
+        d_id = semantic_layer.get("dataset_id", target_id)
+        if d_id:
+            DatasetStore.register(d_id, semantic_layer)
+            target_id = d_id
+
+    # 2. Si solo mandaron el ID (preguntas subsecuentes), recuperarlo del store
+    elif target_id and DatasetStore.exists(target_id):
+        semantic_layer = DatasetStore.get(target_id)
+
+    else:
+        semantic_layer = semantic_layer or {}
+
+    # 3. Prioridad a los objetos enviados explícitamente, de lo contrario se leen de semantic_layer
+    resolved_taxonomies = taxonomies or semantic_layer.get("taxonomies", {})
+    resolved_examples = examples or semantic_layer.get("examples", [])
+
+    return {
+        "question": question,
+        "trace_id": trace_id,
+        "dataset_id": target_id,
+        "dataset_ids": dataset_ids or ([target_id] if target_id else []),
+        "dataset_relations": dataset_relations or [],
+        "inline_datasets": inline_datasets or {},
+        "llm": llm,
+        "connector": connector,
+        "semantic_layer": semantic_layer,
+        "taxonomies": resolved_taxonomies,
+        "examples": resolved_examples,
+        "schema_columns": list(semantic_layer.get("columns", {}).keys()),
+    }
+
+
+
+execution_stage.py
+
+import duckdb
+import pandas as pd
+from agents.filters import is_valid_question
+from agents.sql_retry import generate_sql_with_retry
+
+
+def run_pre_pipeline(ctx: dict, llm=None) -> dict:
+    """Validación previa rápida de la entrada sin llamadas al LLM."""
+    if not is_valid_question(ctx["question"]):
+        raise ValueError("La pregunta no es válida o es demasiado corta.")
+
+    ctx["intent"] = None
+    return ctx
+
+
+
+def run_main_pipeline(ctx: dict, llm) -> dict:
+    sql_query = generate_sql_with_retry(
+        question=ctx["question"],
+        schema_columns=ctx["schema_columns"],
+        semantic_layer=ctx["semantic_layer"],
+        llm=llm,
+        taxonomies=ctx.get("taxonomies"),
+        examples=ctx.get("examples"),
+        intent=ctx.get("intent"),
+    )
+
+    if isinstance(sql_query, dict):
+        sql_query = sql_query.get("sql", "")
+
+    ctx["generated_sql"] = sql_query
+
+    return {
+        "status": "success",
+        "trace_id": ctx.get("trace_id"),
+        "question": ctx["question"],
+        "sql": sql_query,
+    }
+
+
+
+
+
+dataset_store.pyclass DatasetStore:
+    _registry = {}
+
+    @classmethod
+    def register(cls, dataset_id: str, semantic_layer: dict) -> None:
+        """Registra o actualiza la capa semántica completa de un dataset."""
+        cls._registry[dataset_id] = semantic_layer
+
+    @classmethod
+    def get(cls, dataset_id: str) -> dict:
+        """Obtiene la capa semántica precargada."""
+        return cls._registry.get(dataset_id, {})
+
+    @classmethod
+    def exists(cls, dataset_id: str) -> bool:
+        return dataset_id in cls._registry
+
+
+
+
+
+
+
+llm_service.py
+from core.observability import log_event
+from core.llm import call_llm
+
+class LLMService:
+    def generate(
+        self, 
+        prompt: str, 
+        system_prompt: str = "You are a helpful AI",  # <-- Valor por defecto
+        trace_id: str = None
+    ) -> str:
+
+        if trace_id:
+            log_event(
+                "llm_request",
+                trace_id,
+                prompt=prompt[:500],
+                system_prompt=system_prompt
+            )
+
+        result = call_llm(prompt, system_prompt)
+
+        if trace_id:
+            log_event(
+                "llm_response",
+                trace_id,
+                response=result[:500]
+            )
+
+        return result
+
+
+
+
+llm.py
+import os
+import requests
+from dotenv import load_dotenv
+from core.settings import LLMConfig
+import time
+
+load_dotenv()
+
+API_KEY = os.getenv("GROQ_API_KEY")
+
+API_URL = "https://api.groq.com/openai/v1/chat/completions"
+
+headers = {
+    "Authorization": f"Bearer {API_KEY}",
+    "Content-Type": "application/json"
+}
+
+
+def call_llm(prompt: str, system_prompt: str = "You are a helpful AI") -> str:
+
+    payload = {
+        "model": LLMConfig.MODEL,
+        "messages": [
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": prompt}
+        ],
+        "temperature": LLMConfig.TEMPERATURE
+    }
+
+    start = time.time()
+
+    response = requests.post(
+        API_URL,
+        headers=headers,
+        json=payload,
+        timeout=LLMConfig.TIMEOUT
+    )
+
+    duration = time.time() - start
+    print(f"🔥 LLM RESPONSE TIME: {duration:.2f}s")
+
+    if response.status_code != 200:
+        raise Exception(response.text)
+
+    result = response.json()
+
+    return result["choices"][0]["message"]["content"]
+
+    

@@ -1,0 +1,30 @@
+dataset_id: erp_tasks
+taxonomies:
+  task_status:
+    column: "Estado"
+    description: "Mapeo normalizado de estados de avance de tareas"
+    canonical_values:
+      completed: ["Terminado", "Completada", "Finalizada", "Finalizado", "OK"]
+      pending: ["En Espera", "Pendiente", "En Pausa", "Detenido"]
+      in_progress: ["En Proceso", "En Ejecución", "Iniciada"]
+
+  site:
+    column: "Fábrica/Sede"
+    description: "Mapeo y sinonimia de plantas o sedes operativas"
+    canonical_values:
+      hoffner: ["hoffner", "Hoffner", "Sede Hoffner"]
+      san_lorenzo: ["sanlorenzoAlmagro", "San Lorenzo", "CASLA"]
+
+  responsible:
+    column: "Responsable"
+    description: "Variaciones de nombres de responsables"
+    canonical_values:
+      lucas: ["LUcas", "Lucas", "lucas"]
+      tyler: ["Tyler", "tyler"]
+
+
+
+
+
+
+

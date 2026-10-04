@@ -5,143 +5,101 @@ class LLMOutputFormatError(Exception):
     pass
 
 
-def build_prompt(
-    question,
-    schema,
-    semantic_layer,
-    intent=None,
-    language="en",
-    relationships=None
-):
+def format_examples(examples: list) -> str:
+    if not examples:
+        return ""
+    lines = ["EJEMPLOS DE REFERENCIA (Few-Shot):"]
+    for ex in examples:
+        lines.append(f"Pregunta: {ex.get('question')}\nSQL: {ex.get('sql', '').strip()}\n---")
+    return "\n".join(lines)
 
-    available_tables = ", ".join(
-        schema["table_name"].unique()
-    )
 
-    intent_text = ""
-    if intent:
-        intent_text = f"""
-Intent:
-Type: {intent.get("intent")}
-Metric: {intent.get("metric")}
-Dimension: {intent.get("dimension")}
-Limit: {intent.get("limit")}
-"""
+def format_taxonomies(taxonomies: dict) -> str:
+    if not taxonomies:
+        return ""
+    return f"TAXONOMIAS Y VALORES CANONICOS:\n{json.dumps(taxonomies, indent=2, ensure_ascii=False)}"
 
-    semantic_text = ""
-    if semantic_layer:
-        semantic_text = f"""
-Semantic Layer:
-Aliases: {semantic_layer.get("aliases")}
-Metrics: {semantic_layer.get("metrics")}
-Columns: {semantic_layer.get("columns")}
-"""
 
-    relationships_text = ""
-    if relationships:
-        relationships_text = f"""
-Relationships:
-{json.dumps(relationships, indent=2)}
+def build_sql_prompt(
+    question: str,
+    semantic_layer: dict,
+    taxonomies: dict = None,
+    examples: list = None,
+    intent: dict = None,
+) -> str:
+    
+    examples_text = format_examples(examples or [])
+    taxonomies_text = format_taxonomies(taxonomies or {})
+    intent_text = f"INTENT DETECTADO: {json.dumps(intent)}\n" if intent else ""
 
-IMPORTANT:
-- Use these relationships when JOIN is required.
-- Preserve requested entity granularity.
-- If relation is one_to_many or many_to_many, aggregate after JOIN.
-- Avoid duplicated rows.
-- Never duplicate entities due to JOIN.
-"""
+    # Extraemos solo métricas y columnas para mantener el prompt compacto
+    compact_semantic = {
+        "dataset_id": semantic_layer.get("dataset_id"),
+        "columns": list(semantic_layer.get("columns", {}).keys()),
+        "metrics": semantic_layer.get("metrics", {}),
+        "aliases": semantic_layer.get("aliases", {}),
+    }
 
     return f"""
-Return ONLY valid JSON.
+Eres un analista de datos experto en SQL. Genera la consulta SQL para responder a la pregunta.
 
-Format:
-{{
-  "sql": "string",
-  "confidence": float
-}}
+METADATOS DEL DATASET:
+{json.dumps(compact_semantic, indent=2, ensure_ascii=False)}
 
-Rules:
-- Only SELECT
-- Use ONLY columns from schema
-- No explanation
-- No markdown
-- Respect intent
-- Use JOIN only when necessary
+{taxonomies_text}
 
-INTENT:
-- top -> ORDER BY DESC
-- bottom -> ORDER BY ASC
-- average -> AVG()
-- total -> SUM()
-
-Available tables:
-{available_tables}
+{examples_text}
 
 {intent_text}
 
-Schema:
-{schema.to_dict(orient="records")}
+REGLAS DE ORO:
+1. Responde UNICAMENTE con un JSON válido: {{"sql": "SELECT ...", "confidence": 0.95}}
+2. Usa SOLO sentencias SELECT.
+3. Respeta las funciones y lógica mostrada en los ejemplos Few-Shot (ej. JULIANDAY, REPLACE, etc.).
+4. No agregues texto ni formato Markdown fuera del JSON.
 
-{semantic_text}
-
-{relationships_text}
-
-Question:
-{question}
+Pregunta del usuario:
+"{question}"
 """
 
 
-def validate_llm_output(parsed):
-
-    if not isinstance(parsed, dict):
-        raise LLMOutputFormatError("Output is not a JSON object")
-
-    if "sql" not in parsed:
-        raise LLMOutputFormatError("Missing 'sql' field")
-
-    if not isinstance(parsed["sql"], str):
-        raise LLMOutputFormatError("SQL must be string")
-
-
 def generate_sql_structured(
-    question,
-    schema,
-    semantic_layer,
+    question: str,
+    semantic_layer: dict,
     llm,
-    language="en",
-    intent=None,
-    relationships=None
-):
+    taxonomies: dict = None,
+    examples: list = None,
+    intent: dict = None,
+) -> str:  # Retorna str
+    
+    if isinstance(llm, dict):
+        raise TypeError(f"Se esperaba LLMService, se recibió dict: {llm}")
 
-    prompt = build_prompt(
+    prompt = build_sql_prompt(
         question=question,
-        schema=schema,
         semantic_layer=semantic_layer,
+        taxonomies=taxonomies,
+        examples=examples,
         intent=intent,
-        language=language,
-        relationships=relationships
     )
 
     raw = llm.generate(
         prompt,
-        system_prompt="You are a senior data analyst. Return ONLY valid JSON."
+        system_prompt="You are a senior data analyst. Return ONLY valid JSON.",
     )
 
-    if not raw or not raw.strip():
-        raise LLMOutputFormatError("Invalid JSON: empty response")
+    if not raw or not str(raw).strip():
+        raise LLMOutputFormatError("Respuesta vacía del LLM")
 
-    raw = raw.strip()
-    raw = raw.replace("```json", "").replace("```", "").strip()
+    raw = str(raw).strip().replace("```json", "").replace("```", "").strip()
 
     try:
-        decoder = json.JSONDecoder()
-        parsed, _ = decoder.raw_decode(raw)
+        parsed = json.loads(raw)
+    except Exception as e:
+        raise LLMOutputFormatError(f"Error al decodificar JSON: {raw}") from e
 
-    except Exception:
-        print("LLM RAW RESPONSE:")
-        print(raw)
-        raise LLMOutputFormatError(f"Invalid JSON: {raw}")
+    if "sql" not in parsed or not isinstance(parsed["sql"], str):
+        raise LLMOutputFormatError("Falta el campo 'sql' en el JSON devuelto")
 
-    validate_llm_output(parsed)
-
-    return parsed
+    # 🔑 CORRECCIÓN: Retornar solo el string de la consulta SQL
+    return parsed["sql"].strip()

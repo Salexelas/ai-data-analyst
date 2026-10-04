@@ -1,5 +1,19 @@
 [
   {
+    "question": "hola",
+    "dataset": "TeamStats2026.csv",
+    "intent": null,
+    "ts": 1790819121.8027077,
+    "response": null
+  },
+  {
+    "question": "f",
+    "dataset": "TeamStats2026.csv",
+    "intent": null,
+    "ts": 1790819047.1953497,
+    "response": null
+  },
+  {
     "question": "3 equipos con mas puntos",
     "dataset": "TeamStats2026.csv",
     "intent": null,
@@ -18,13 +32,6 @@
     "dataset": "TeamStats2026.csv",
     "intent": null,
     "ts": 1782956470.695435,
-    "response": null
-  },
-  {
-    "question": "hola",
-    "dataset": "TeamStats2026.csv",
-    "intent": null,
-    "ts": 1782697651.158896,
     "response": null
   },
   {
@@ -340,13 +347,6 @@
     "dataset": "players.csv",
     "intent": null,
     "ts": 1778962779.241734,
-    "response": null
-  },
-  {
-    "question": "cual es el promedio de edad de Oklahoma City Tunder",
-    "dataset": "players.csv",
-    "intent": null,
-    "ts": 1778962699.2269728,
     "response": null
   }
 ]

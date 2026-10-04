@@ -6,19 +6,19 @@ def repair_sql_generation(
     schema,
     semantic_layer,
     intent,
-    relationships,
     previous_output,
     error,
     llm,
 ):
-
     fix_prompt = f"""
 You generated an invalid SQL query.
 
 Fix it using the error.
 
 Context:
-Question: {question}
+
+Question:
+{question}
 
 Schema:
 {schema}
@@ -29,9 +29,6 @@ Semantic Layer:
 Intent:
 {intent}
 
-Relationships:
-{relationships}
-
 Previous output:
 {previous_output}
 
@@ -39,11 +36,12 @@ Error:
 {error}
 
 Rules:
-- Keep same intent
-- Use relationships if JOIN is needed
+- Keep the same intent
 - Preserve entity granularity
 - Do not invent columns
+- Do not invent tables
 - Fix ONLY the error
+- Use only the provided schema and semantic layer
 - Return ONLY valid JSON
 
 Format:
@@ -59,9 +57,7 @@ Format:
     )
 
     if not raw or not raw.strip():
-        raise ValueError(
-            "Invalid JSON"
-        )
+        raise ValueError("Invalid JSON")
 
     raw = (
         raw.strip()
@@ -72,8 +68,6 @@ Format:
 
     decoder = json.JSONDecoder()
 
-    parsed, _ = (
-        decoder.raw_decode(raw)
-    )
+    parsed, _ = decoder.raw_decode(raw)
 
     return parsed
