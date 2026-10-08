@@ -52,10 +52,19 @@ def build_context(
         "dataset_ids": dataset_ids or ([target_id] if target_id else []),
         "dataset_relations": dataset_relations or [],
         "inline_datasets": inline_datasets or {},
+
+        # NUEVO: conservar el schema del dataset
+        "inline_dataset_schema": kwargs.get(
+            "inline_dataset_schema",
+            {},
+        ),
+
         "llm": llm,
         "connector": connector,
         "semantic_layer": semantic_layer,
         "taxonomies": resolved_taxonomies,
         "examples": resolved_examples,
-        "schema_columns": list(semantic_layer.get("columns", {}).keys()),
+        "schema_columns": list(
+            semantic_layer.get("columns", {}).keys()
+        ),
     }

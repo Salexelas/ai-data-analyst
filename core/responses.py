@@ -1,4 +1,4 @@
-from dataclasses import dataclass
+'''from dataclasses import dataclass
 from typing import Optional, Any
 
 
@@ -19,4 +19,4 @@ class AnalyticsResponse:
 
     metrics: Optional[dict] = None
 
-    severity: Optional[str] = None
+    severity: Optional[str] = None'''

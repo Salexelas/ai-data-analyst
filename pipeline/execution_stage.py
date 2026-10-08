@@ -17,17 +17,46 @@ def run_pre_pipeline(ctx: dict, llm=None) -> dict:
 
     return ctx
 
+def _restore_date_columns(df: pd.DataFrame) -> pd.DataFrame:
+    result = df.copy()
+
+    for column in result.columns:
+        series = result[column]
+
+        if series.dtype != "object":
+            continue
+
+        values = series.dropna()
+
+        if values.empty:
+            continue
+
+        converted = pd.to_datetime(
+            values,
+            errors="coerce",
+        )
+
+        if converted.notna().all():
+            result[column] = pd.to_datetime(
+                series,
+                errors="coerce",
+            )
+
+    return result
+
 
 def _execute_inline_sql(
     sql: str,
     inline_datasets: dict,
     semantic_layer: dict,
+    inline_dataset_schema: dict = None,
 ) -> pd.DataFrame:
     """
     Ejecuta el SQL generado por el Agent sobre los datasets
     enviados por la aplicación consumidora.
 
-    La aplicación consumidora NO necesita DuckDB.
+    Reconstruye los tipos originales del DataFrame antes
+    de registrarlo en DuckDB.
     """
 
     if not sql:
@@ -47,24 +76,8 @@ def _execute_inline_sql(
             "El semantic layer no contiene 'dataset_id'."
         )
 
-    # ---------------------------------------------------------
-    # El ERP puede enviar:
-    #
-    # inline_datasets = {
-    #     "tareas_filtradas": [...]
-    # }
-    #
-    # mientras que semantic_layer tiene:
-    #
-    # dataset_id: erp_tasks
-    #
-    # El SQL generado utiliza erp_tasks.
-    # ---------------------------------------------------------
-
     records = inline_datasets.get(dataset_id)
 
-    # Si el nombre enviado por el consumidor no coincide con
-    # dataset_id, pero solamente hay un dataset, usamos ese.
     if records is None and len(inline_datasets) == 1:
         records = next(iter(inline_datasets.values()))
 
@@ -80,11 +93,12 @@ def _execute_inline_sql(
 
     if isinstance(records, pd.DataFrame):
 
-        df = records
+        df = records.copy()
 
     elif isinstance(records, list):
 
         df = pd.DataFrame(records)
+
 
     else:
 
@@ -92,6 +106,60 @@ def _execute_inline_sql(
             f"Formato no soportado para inline_datasets['{dataset_id}']: "
             f"{type(records).__name__}"
         )
+
+    df = _restore_date_columns(df)
+    
+    # ---------------------------------------------------------
+    # Restaurar tipos originales
+    # ---------------------------------------------------------
+
+    dataset_schema = (
+        (inline_dataset_schema or {})
+        .get(dataset_id)
+    )
+
+    if dataset_schema:
+
+        for column, dtype in dataset_schema.items():
+
+            if column not in df.columns:
+                continue
+
+            if dtype.startswith("datetime64"):
+
+                df[column] = pd.to_datetime(
+                    df[column],
+                    errors="coerce",
+                )
+
+            elif dtype == "date":
+
+                df[column] = pd.to_datetime(
+                    df[column],
+                    errors="coerce",
+                ).dt.date
+
+            elif dtype.startswith("int"):
+
+                df[column] = pd.to_numeric(
+                    df[column],
+                    errors="coerce",
+                ).astype("Int64")
+
+            elif dtype.startswith("float"):
+
+                df[column] = pd.to_numeric(
+                    df[column],
+                    errors="coerce",
+                ).astype("Float64")
+
+            elif dtype in ("bool", "boolean"):
+
+                df[column] = df[column].astype("boolean")
+
+            elif dtype in ("string", "object"):
+
+                df[column] = df[column].astype("string")
 
     # ---------------------------------------------------------
     # Ejecutar SQL
@@ -149,6 +217,7 @@ def run_main_pipeline(ctx: dict, llm) -> dict:
         sql=sql_query,
         inline_datasets=ctx.get("inline_datasets"),
         semantic_layer=ctx.get("semantic_layer"),
+        inline_dataset_schema=ctx.get("inline_dataset_schema"),
     )
 
     # =========================================================

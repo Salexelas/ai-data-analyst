@@ -17,6 +17,7 @@ def answer_question(
     taxonomies: dict = None,
     examples: Union[list[dict], dict] = None,
     inline_datasets: dict = None,
+    inline_dataset_schema: dict = None,
     llm=None,
     # Parámetros legacy
     connector=None,
@@ -30,11 +31,9 @@ def answer_question(
 
     trace_id = new_trace_id()
 
-    # 1. Fallback automático para LLM
     if llm is None:
         llm = LLMService()
 
-    # 2. Normalización de parámetros de entrada
     if dataset_ids is None:
         if dataset_id:
             dataset_ids = [dataset_id]
@@ -42,7 +41,7 @@ def answer_question(
             dataset_ids = []
 
     try:
-        # 3. Construcción del contexto
+
         ctx = build_context(
             question=question,
             dataset_ids=dataset_ids,
@@ -51,18 +50,17 @@ def answer_question(
             taxonomies=taxonomies,
             examples=examples,
             inline_datasets=inline_datasets,
+            inline_dataset_schema=inline_dataset_schema,
             connector=connector,
             llm=llm,
             trace_id=trace_id,
         )
 
-        # 4. Pre-pipeline
         ctx = run_pre_pipeline(
             ctx,
             llm,
         )
 
-        # 5. Pipeline principal
         response = run_main_pipeline(
             ctx,
             llm,

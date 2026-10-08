@@ -1,4 +1,4 @@
-from core.responses import (
+'''from core.responses import (
     AnalyticsResponse
 )
 
@@ -19,4 +19,4 @@ class ResponseMapper:
             language=ctx.exec.language,
             metrics=ctx.output.metrics,
             severity=ctx.output.severity,
-        )
+        )'''

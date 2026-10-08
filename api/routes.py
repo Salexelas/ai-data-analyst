@@ -50,7 +50,16 @@ def query(request: QueryRequest):
             semantic_layer=request.semantic_layer,
             taxonomies=request.taxonomies,
             examples=request.examples,
-            inline_datasets=getattr(request, "inline_datasets", None),
+            inline_datasets=getattr(
+                request,
+                "inline_datasets",
+                None,
+            ),
+            inline_dataset_schema=getattr(
+                request,
+                "inline_dataset_schema",
+                None,
+            ),
             connector=connector,
             llm=llm_service,
         )
