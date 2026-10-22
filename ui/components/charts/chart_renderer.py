@@ -1,4 +1,4 @@
-import streamlit as st
+'''import streamlit as st
 import plotly.express as px
 
 from ui.components.charts.chart_aggregations import apply_aggregation
@@ -124,4 +124,4 @@ def render_chart(df, config):
         )
 
     except Exception as exc:
-        st.error(f"Error generating chart: {exc}")
+        st.error(f"Error generating chart: {exc}")'''
