@@ -32,7 +32,8 @@ paddleocr
 lizard
 pydeps
 coverage
-pytest pytest-cov
+pytest
+pytest-cov
 wily
 xenon
 pyan3

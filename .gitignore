@@ -22,3 +22,6 @@ feedback/
 *.onnx
 *.ckpt
 models/
+# Python virtual environments
+.venv/
+venv/
