@@ -1,4 +1,4 @@
-import streamlit as st
+'''import streamlit as st
 
 from ui.components.sidebar import render_sidebar
 
@@ -21,4 +21,4 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    main()'''

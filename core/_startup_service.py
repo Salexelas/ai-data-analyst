@@ -1,4 +1,4 @@
-import os
+'''import os
 import streamlit as st
 
 from connectors.factory import create_connector
@@ -61,4 +61,4 @@ def autoload_last_dataset():
     try:
         load_dataset(*dataset)
     except Exception as e:
-        st.warning(f"No se pudo cargar dataset: {e}")
+        st.warning(f"No se pudo cargar dataset: {e}")'''

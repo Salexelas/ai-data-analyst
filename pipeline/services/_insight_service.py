@@ -1,4 +1,4 @@
-from tools.insight_prompt_builder import (
+'''from tools.insight_prompt_builder import (
     build_insight_prompt
 )
 
@@ -103,4 +103,4 @@ class InsightService:
 
             ctx.output.metrics = {}
             ctx.output.chart_type = None
-            ctx.output.severity = "error"
+            ctx.output.severity = "error"'''

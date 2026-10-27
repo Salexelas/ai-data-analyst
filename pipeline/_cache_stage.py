@@ -1,4 +1,4 @@
-from cache import (
+'''from cache import (
     SimpleCache,
     build_cache_key,
 )
@@ -57,4 +57,4 @@ def store_response(
     cache.set(
         ctx.cache_key,
         response,
-    )
+    )'''

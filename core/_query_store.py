@@ -1,4 +1,4 @@
-import os
+'''import os
 import json
 import time
 
@@ -49,4 +49,4 @@ def save_query(question, dataset_id=None, intent=None, response=None):
     with open(QUERIES_PATH, "w", encoding="utf-8") as f:
         json.dump(queries, f, indent=2, ensure_ascii=False)
 
-    print("✅ ARCHIVO GUARDADO")
+    print("✅ ARCHIVO GUARDADO")'''

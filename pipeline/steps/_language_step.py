@@ -1,4 +1,4 @@
-class LanguageStep:
+'''class LanguageStep:
     name = "language"
 
     def __init__(self, language_service):
@@ -10,4 +10,4 @@ class LanguageStep:
             ctx.input.question
         )
 
-        return ctx
+        return ctx'''

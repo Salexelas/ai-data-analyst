@@ -1,4 +1,4 @@
-from core.pipeline import Pipeline
+'''from core.pipeline import Pipeline
 
 from pipeline.steps.validation_step import ValidationStep
 from pipeline.steps.language_step import LanguageStep
@@ -10,7 +10,7 @@ from pipeline.steps.execution_step import ExecutionStep
 from pipeline.steps.insight_step import InsightStep
 
 from pipeline.services.validation_service import ValidationService
-from pipeline.services.language_service import LanguageService
+#from pipeline.services.language_service import LanguageService
 from pipeline.services.intent_service import IntentService
 
 from pipeline.services.schema_service import SchemaService
@@ -28,9 +28,6 @@ class PipelineFactory:
             [
                 ValidationStep(
                     ValidationService()
-                ),
-                LanguageStep(
-                    LanguageService()
                 ),
                 IntentStep(
                     IntentService(llm)
@@ -56,4 +53,4 @@ class PipelineFactory:
                     InsightService(llm)
                 ),
             ]
-        )
+        )'''

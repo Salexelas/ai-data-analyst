@@ -1,4 +1,4 @@
-from agents.intent_detector import detect_intent
+'''from agents.intent_detector import detect_intent
 from core.observability import log_event
 
 
@@ -21,4 +21,4 @@ class IntentService:
             intent=intent
         )
 
-        return intent
+        return intent'''
