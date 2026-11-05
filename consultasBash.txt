@@ -41,24 +41,18 @@ ForEach-Object {
 
 /////////////////////////////lineas contrador ///////////////////////////////////
 
-radon raw agents core dataset_editor pipeline rederers router connectors services semantic tools ui |
-Select-String -Pattern "\.py|LOC" |
-ForEach-Object { $_.ToString() } |
-ForEach-Object -Begin {$file=""} -Process {
-    if ($_ -match "\.py") { $file = $_ }
-    elseif ($_ -match "LOC:\s+(\d+)") {
-        [PSCustomObject]@{
-            File = $file
-            LOC = [int]$matches[1]
-        }
+Get-ChildItem -Path . -Recurse -Filter *.py | Where-Object { $_.FullName -notmatch '\\(\.venv|venv|__pycache__)\\' } | ForEach-Object {
+    [PSCustomObject]@{
+        Archivo = $_.Name
+        Lineas  = (Get-Content $_.FullName | Measure-Object -Line).Lines
     }
-} | Sort-Object LOC -Descending
+} | Format-Table -AutoSize
 
 ///////////////////////////////fin lineas contrador ///////////////////////////////////
 
 //////////////////////// obtener estructura (tree)//////////////////////////////////
 
-Get-ChildItem -Path . | Where-Object { $_.Name -ne "venv" -and $_.Name -ne "__pycache__" } | ForEach-Object {
+Get-ChildItem -Path . | Where-Object { $_.Name -ne "venv" -and $_.Name -ne ".venv" -and $_.Name -ne "__pycache__" } | ForEach-Object {
     $_.Name
     if ($_.PSIsContainer) {
         Get-ChildItem $_.FullName -Recurse | Where-Object { $_.Name -ne "__pycache__" } | ForEach-Object {
@@ -66,7 +60,6 @@ Get-ChildItem -Path . | Where-Object { $_.Name -ne "venv" -and $_.Name -ne "__py
         }
     }
 } > estructura.txt
-
 
 
 /////////////////////////////fin obtener estructura (tree) /////////////////////////////////
@@ -128,9 +121,7 @@ git clean -fd
 
 ////////////////////////como saber cuantos scrytips hay/////////////
 
-Get-ChildItem -Path .\app\ -Recurse -Filter *.py | Measure-Object | Select-Object -ExpandProperty Count
-
-
+(Get-ChildItem -Path .\agents, .\connectors, .\core, .\api, .\pipeline -Recurse -Filter *.py).Count
 
 ////////////////////////////////////////////
 
