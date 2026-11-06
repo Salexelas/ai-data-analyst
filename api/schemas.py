@@ -29,3 +29,13 @@ class QueryRequest(BaseModel):
             dict[str, Any],
         ]
     ] = None
+
+
+class ClientCreateRequest(BaseModel):
+    name: str
+    slug: str
+
+class ClientResponse(BaseModel):
+    id: str
+    name: str
+    slug: str

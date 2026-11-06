@@ -39,3 +39,4 @@ xenon
 pyan3
 fastapi 
 uvicorn
+supabase

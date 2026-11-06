@@ -90,7 +90,7 @@ lista de scrtips con mas lineas
 
 Get-ChildItem -Recurse -Include *.py -Path app | ForEach-Object {
     $lineCount = (Get-Content $_.FullName).Count
-    if ($lineCount -gt 39) {
+    if ($lineCount -gt 19) {
         [PSCustomObject]@{
             File       = $_.FullName
             LineCount  = $lineCount
@@ -145,7 +145,7 @@ python3 -m streamlit run main.py
 
 ////////////////// visual code window radon ///////////////////
 
-radon cc .\agents .\connectors .\core -s -a
+radon cc .\agents .\connectors .\api .\core .\pipeline -s -a
 
 ////////////////////////   fin visual code window radon///////////////////////////////////////
 

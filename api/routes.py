@@ -3,9 +3,10 @@ import numpy as np
 import pandas as pd
 from fastapi import APIRouter, HTTPException
 
-from api.schemas import QueryRequest
+from api.schemas import QueryRequest, ClientCreateRequest
 from agents.service import answer_question
 from core.llm_service import LLMService
+from core.supabase_client import get_supabase_client
 from connectors.duckdb import DuckDBConnector  # Instancia del conector
 
 router = APIRouter()
@@ -101,3 +102,26 @@ def query(request: QueryRequest):
             status_code=500,
             detail=f"Error al procesar la consulta: {str(e)}"
         )
+
+@router.get("/clients")
+def get_clients():
+    supabase = get_supabase_client()
+    if not supabase:
+        # Fallback local por si Supabase no está configurado temporalmente
+        return [{"id": "default", "name": "Cliente Por Defecto", "slug": "default_client"}]
+    
+    response = supabase.table("clients").select("*").execute()
+    return response.data
+
+@router.post("/clients")
+def create_client(request: ClientCreateRequest):
+    supabase = get_supabase_client()
+    if not supabase:
+        raise HTTPException(status_code=500, detail="Supabase no configurado en el servidor.")
+    
+    response = supabase.table("clients").insert({
+        "name": request.name,
+        "slug": request.slug
+    }).execute()
+    
+    return response.data
