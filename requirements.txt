@@ -27,7 +27,6 @@ easyocr
 pdf2image
 pillow
 python-docx
-paddlepaddle
 paddleocr
 lizard
 pydeps
