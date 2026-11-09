@@ -1,23 +1,24 @@
 import traceback
 import numpy as np
 import pandas as pd
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Query, UploadFile, File, Form
+from pydantic import BaseModel
 
 from api.schemas import QueryRequest, ClientCreateRequest
 from agents.service import answer_question
 from core.llm_service import LLMService
 from core.supabase_client import get_supabase_client
-from connectors.duckdb import DuckDBConnector  # Instancia del conector
+from connectors.duckdb import DuckDBConnector
 
 router = APIRouter()
 llm_service = LLMService()
 
+class LoginRequest(BaseModel):
+    email: str
+    password: str
+
 
 def sanitize_for_json(obj):
-    """
-    Convierte dinámicamente cualquier tipo de NumPy/Pandas o DataFrames 
-    a tipos nativos de Python serializables en JSON.
-    """
     if isinstance(obj, pd.DataFrame):
         return sanitize_for_json(obj.to_dict(orient="records"))
     elif isinstance(obj, pd.Series):
@@ -39,6 +40,56 @@ def sanitize_for_json(obj):
     return obj
 
 
+# =========================================================
+# ENDPOINT DE AUTENTICACIÓN
+# =========================================================
+@router.post("/auth/login")
+def login(request: LoginRequest):
+    supabase = get_supabase_client()
+    if not supabase:
+        raise HTTPException(status_code=500, detail="Supabase no configurado en el backend.")
+    try:
+        res = supabase.auth.sign_in_with_password({
+            "email": request.email,
+            "password": request.password
+        })
+        user_id = res.user.id if hasattr(res.user, "id") else res.user.get("id")
+        cliente_res = supabase.table("clients").select("*").eq("id", user_id).execute()
+        
+        if not cliente_res.data:
+            cliente_res = supabase.table("clients").select("*").eq("email", request.email).execute()
+
+        if not cliente_res.data:
+            raise HTTPException(status_code=404, detail="Usuario sin empresa asociada en la tabla clients.")
+            
+        client_data = cliente_res.data[0] if cliente_res.data else {}
+        nombre_empresa = client_data.get('nombre') or client_data.get('name') or "Empresa Demo SA"
+        
+        # --- DEFINICIÓN DINÁMICA DEL LÍMITE SEGÚN EL PLAN ---
+        plan_db = str(client_data.get("plan", "bronze")).strip().lower()
+        limites_por_plan = {"bronze": 10, "plata": 30, "gold": 100}
+        
+        # Si el plan existe en nuestro diccionario, toma ese valor; sino, usa el de la base o 100 por defecto
+        limite_dinamico = limites_por_plan.get(plan_db, client_data.get("limite_datasets", 100))
+        
+        return {
+            "success": True,
+            "user": res.user.model_dump() if hasattr(res.user, "model_dump") else res.user,
+            "client": {
+                "id": client_data.get("id"),
+                "name": nombre_empresa,
+                "slug": client_data.get("slug", "empresa_demo"),
+                "plan": plan_db,
+                "limite_datasets": limite_dinamico  # <--- Límite dinámico inyectado
+            }
+        }
+    except Exception as e:
+        raise HTTPException(status_code=401, detail=f"Credenciales inválidas o error: {str(e)}")
+
+
+# =========================================================
+# ENDPOINT DE CONSULTAS
+# =========================================================
 @router.post("/query")
 def query(request: QueryRequest):
     try:
@@ -51,16 +102,8 @@ def query(request: QueryRequest):
             semantic_layer=request.semantic_layer,
             taxonomies=request.taxonomies,
             examples=request.examples,
-            inline_datasets=getattr(
-                request,
-                "inline_datasets",
-                None,
-            ),
-            inline_dataset_schema=getattr(
-                request,
-                "inline_dataset_schema",
-                None,
-            ),
+            inline_datasets=getattr(request, "inline_datasets", None),
+            inline_dataset_schema=getattr(request, "inline_dataset_schema", None),
             connector=connector,
             llm=llm_service,
         )
@@ -72,44 +115,24 @@ def query(request: QueryRequest):
         else:
             res_dict = {}
 
-        # Si el pipeline devolvió un error
         if "error" in res_dict and res_dict["error"]:
-            raise RuntimeError(
-                f"Error devuelto por el pipeline: {res_dict['error']}"
-            )
+            raise RuntimeError(f"Error devuelto por el pipeline: {res_dict['error']}")
 
-        # ============================================
-        # DEBUG: respuesta final que recibe el ERP
-        # ============================================
-        final_response = sanitize_for_json(response)
-
-        print("\n" + "=" * 80)
-        print("RESPONSE FINAL PARA ERP")
-        print("=" * 80)
-        print(final_response)
-        print("=" * 80 + "\n")
-
-        return final_response
+        return sanitize_for_json(response)
 
     except Exception as e:
-        print("\n" + "=" * 60)
-        print("  TRACEBACK DETALLADO DEL ERROR EN UVICORN:")
-        print("=" * 60)
         traceback.print_exc()
-        print("=" * 60 + "\n")
+        raise HTTPException(status_code=500, detail=f"Error al procesar la consulta: {str(e)}")
 
-        raise HTTPException(
-            status_code=500,
-            detail=f"Error al procesar la consulta: {str(e)}"
-        )
 
+# =========================================================
+# ENDPOINTS DE CLIENTES Y GESTIÓN DE DATASETS EN NUBE
+# =========================================================
 @router.get("/clients")
 def get_clients():
     supabase = get_supabase_client()
     if not supabase:
-        # Fallback local por si Supabase no está configurado temporalmente
         return [{"id": "default", "name": "Cliente Por Defecto", "slug": "default_client"}]
-    
     response = supabase.table("clients").select("*").execute()
     return response.data
 
@@ -118,10 +141,71 @@ def create_client(request: ClientCreateRequest):
     supabase = get_supabase_client()
     if not supabase:
         raise HTTPException(status_code=500, detail="Supabase no configurado en el servidor.")
-    
     response = supabase.table("clients").insert({
         "name": request.name,
         "slug": request.slug
     }).execute()
-    
     return response.data
+
+@router.post("/datasets/upload")
+def upload_dataset(client_id: str = Form(...), file: UploadFile = File(...)):
+    supabase = get_supabase_client()
+    if not supabase:
+        raise HTTPException(status_code=500, detail="Supabase no configurado en el backend.")
+    try:
+        file_path = f"{client_id}/{file.filename}"
+        file_bytes = file.file.read()
+
+        print(f"📦 Subiendo archivo al Storage: {file_path}")
+        
+        # 1. Subir a Supabase Storage
+        storage_res = supabase.storage.from_("client-datasets").upload(
+            path=file_path,
+            file=file_bytes,
+            file_options={"upsert": "true", "content-type": file.content_type}
+        )
+        print("✅ Storage OK:", storage_res)
+
+        # 2. Registrar en la tabla SQL 'datasets'
+        print(f"📝 Insertando en tabla datasets para client_id: {client_id}")
+        db_res = supabase.table("datasets").insert({
+            "client_id": client_id,
+            "nombre_archivo": file.filename,
+            "file_path": file_path
+        }).execute()
+        
+        print("✅ Base de datos OK:", db_res)
+
+        return {"success": True, "file_path": file_path}
+    except Exception as e:
+        print(f"❌ ERROR CRÍTICO EN UPLOAD: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error al subir dataset: {str(e)}")
+
+@router.get("/datasets/{client_id}")
+def get_client_datasets(client_id: str):
+    supabase = get_supabase_client()
+    if not supabase:
+        raise HTTPException(status_code=500, detail="Supabase no configurado.")
+    response = supabase.table("datasets").select("*").eq("client_id", client_id).execute()
+    return response.data
+
+@router.delete("/datasets/delete")
+def delete_dataset(client_id: str = Query(...), file_path: str = Query(...)):
+    supabase = get_supabase_client()
+    if not supabase:
+        raise HTTPException(status_code=500, detail="Supabase no configurado en el backend.")
+    
+    try:
+        # Asegurarnos de que el file_path pertenezca al client_id por seguridad
+        if not file_path.startswith(client_id):
+            raise HTTPException(status_code=403, detail="No autorizado para eliminar este archivo.")
+
+        # 1. Eliminar archivo físico de Supabase Storage
+        supabase.storage.from_("client-datasets").remove([file_path])
+
+        # 2. Eliminar registro de la tabla SQL 'datasets'
+        supabase.table("datasets").delete().eq("file_path", file_path).eq("client_id", client_id).execute()
+
+        return {"success": True, "message": "Dataset eliminado correctamente."}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error al eliminar el dataset: {str(e)}")
