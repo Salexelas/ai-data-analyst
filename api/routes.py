@@ -181,6 +181,33 @@ def upload_dataset(client_id: str = Form(...), file: UploadFile = File(...)):
         print(f"❌ ERROR CRÍTICO EN UPLOAD: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Error al subir dataset: {str(e)}")
 
+# --- IMPORTANTE: /download-url DEBE IR ANTES DE /{client_id} ---
+@router.get("/datasets/download-url")
+def get_dataset_download_url(client_id: str = Query(...), file_path: str = Query(...)):
+    supabase = get_supabase_client()
+    if not supabase:
+        raise HTTPException(status_code=500, detail="Supabase no configurado.")
+    try:
+        if not file_path.startswith(client_id):
+            raise HTTPException(status_code=403, detail="No autorizado.")
+        
+        res = supabase.storage.from_("client-datasets").create_signed_url(file_path, 60)
+        
+        # Extracción segura compatible con cualquier versión de supabase-py
+        if isinstance(res, str):
+            signed_url = res
+        elif isinstance(res, dict):
+            signed_url = res.get("signedURL") or res.get("signedUrl") or res.get("data", {}).get("signedURL")
+        else:
+            signed_url = getattr(res, "signedURL", None) or getattr(res, "signedUrl", None)
+
+        if not signed_url:
+            raise HTTPException(status_code=500, detail=f"No se pudo extraer la URL firmada de la respuesta: {res}")
+
+        return {"success": True, "download_url": signed_url}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error al generar URL: {str(e)}")
+
 @router.get("/datasets/{client_id}")
 def get_client_datasets(client_id: str):
     supabase = get_supabase_client()
@@ -189,23 +216,6 @@ def get_client_datasets(client_id: str):
     response = supabase.table("datasets").select("*").eq("client_id", client_id).execute()
     return response.data
 
-@router.get("/datasets/download-url")
-def get_dataset_download_url(client_id: str = Query(...), file_path: str = Query(...)):
-    supabase = get_supabase_client()
-    if not supabase:
-        raise HTTPException(status_code=500, detail="Supabase no configurado.")
-    try:
-        # Asegurar que el archivo pertenece al cliente por seguridad
-        if not file_path.startswith(client_id):
-            raise HTTPException(status_code=403, detail="No autorizado.")
-        
-        # Generar una URL firmada válida por 60 segundos
-        res = supabase.storage.from_("client-datasets").create_signed_url(file_path, 60)
-        signed_url = res.get("signedURL") or res.get("signedUrl")
-        return {"success": True, "download_url": signed_url}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error al generar URL: {str(e)}")
-    
 @router.delete("/datasets/delete")
 def delete_dataset(client_id: str = Query(...), file_path: str = Query(...)):
     supabase = get_supabase_client()
@@ -213,14 +223,10 @@ def delete_dataset(client_id: str = Query(...), file_path: str = Query(...)):
         raise HTTPException(status_code=500, detail="Supabase no configurado en el backend.")
     
     try:
-        # Asegurarnos de que el file_path pertenezca al client_id por seguridad
         if not file_path.startswith(client_id):
             raise HTTPException(status_code=403, detail="No autorizado para eliminar este archivo.")
 
-        # 1. Eliminar archivo físico de Supabase Storage
         supabase.storage.from_("client-datasets").remove([file_path])
-
-        # 2. Eliminar registro de la tabla SQL 'datasets'
         supabase.table("datasets").delete().eq("file_path", file_path).eq("client_id", client_id).execute()
 
         return {"success": True, "message": "Dataset eliminado correctamente."}
