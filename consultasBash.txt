@@ -1,5 +1,9 @@
 //////levantar FAST API/////////
 uvicorn api.main:app --reload
+
+https://ai-data-analyst-2-6772.onrender.com/
+
+
 //////////////
 
 

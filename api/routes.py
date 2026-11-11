@@ -189,6 +189,23 @@ def get_client_datasets(client_id: str):
     response = supabase.table("datasets").select("*").eq("client_id", client_id).execute()
     return response.data
 
+@router.get("/datasets/download-url")
+def get_dataset_download_url(client_id: str = Query(...), file_path: str = Query(...)):
+    supabase = get_supabase_client()
+    if not supabase:
+        raise HTTPException(status_code=500, detail="Supabase no configurado.")
+    try:
+        # Asegurar que el archivo pertenece al cliente por seguridad
+        if not file_path.startswith(client_id):
+            raise HTTPException(status_code=403, detail="No autorizado.")
+        
+        # Generar una URL firmada válida por 60 segundos
+        res = supabase.storage.from_("client-datasets").create_signed_url(file_path, 60)
+        signed_url = res.get("signedURL") or res.get("signedUrl")
+        return {"success": True, "download_url": signed_url}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error al generar URL: {str(e)}")
+    
 @router.delete("/datasets/delete")
 def delete_dataset(client_id: str = Query(...), file_path: str = Query(...)):
     supabase = get_supabase_client()
