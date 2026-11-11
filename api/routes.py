@@ -156,29 +156,31 @@ def upload_dataset(client_id: str = Form(...), file: UploadFile = File(...)):
         file_path = f"{client_id}/{file.filename}"
         file_bytes = file.file.read()
 
-        print(f"📦 Subiendo archivo al Storage: {file_path}")
-        
-        # 1. Subir a Supabase Storage
+        # 1. Subir a Supabase Storage (sobrescribiendo si ya existe con upsert=True)
         storage_res = supabase.storage.from_("client-datasets").upload(
             path=file_path,
             file=file_bytes,
             file_options={"upsert": "true", "content-type": file.content_type}
         )
-        print("✅ Storage OK:", storage_res)
 
-        # 2. Registrar en la tabla SQL 'datasets'
-        print(f"📝 Insertando en tabla datasets para client_id: {client_id}")
-        db_res = supabase.table("datasets").insert({
-            "client_id": client_id,
-            "nombre_archivo": file.filename,
-            "file_path": file_path
-        }).execute()
-        
-        print("✅ Base de datos OK:", db_res)
+        # 2. Verificar si ya existe un registro con este nombre para el cliente
+        existing = supabase.table("datasets").select("*").eq("client_id", client_id).eq("nombre_archivo", file.filename).execute()
+
+        if existing.data:
+            # Si ya existe, actualizamos la ruta o mantenemos el registro único
+            db_res = supabase.table("datasets").update({
+                "file_path": file_path
+            }).eq("client_id", client_id).eq("nombre_archivo", file.filename).execute()
+        else:
+            # Si no existe, insertamos el nuevo registro
+            db_res = supabase.table("datasets").insert({
+                "client_id": client_id,
+                "nombre_archivo": file.filename,
+                "file_path": file_path
+            }).execute()
 
         return {"success": True, "file_path": file_path}
     except Exception as e:
-        print(f"❌ ERROR CRÍTICO EN UPLOAD: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Error al subir dataset: {str(e)}")
 
 # --- IMPORTANTE: /download-url DEBE IR ANTES DE /{client_id} ---
