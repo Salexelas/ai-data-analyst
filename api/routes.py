@@ -3,12 +3,13 @@ import numpy as np
 import pandas as pd
 from fastapi import APIRouter, HTTPException, Query, UploadFile, File, Form
 from pydantic import BaseModel
-
-from api.schemas import QueryRequest, ClientCreateRequest
+from sqlalchemy import create_engine, text, inspect
+from api.schemas import QueryRequest, ClientCreateRequest, ConnectionTestRequest
 from agents.service import answer_question
 from core.llm_service import LLMService
 from core.supabase_client import get_supabase_client
 from connectors.duckdb import DuckDBConnector
+from connectors.sql_database import SQLDatabaseConnector
 
 router = APIRouter()
 llm_service = LLMService()
@@ -16,7 +17,6 @@ llm_service = LLMService()
 class LoginRequest(BaseModel):
     email: str
     password: str
-
 
 def sanitize_for_json(obj):
     if isinstance(obj, pd.DataFrame):
@@ -65,11 +65,8 @@ def login(request: LoginRequest):
         client_data = cliente_res.data[0] if cliente_res.data else {}
         nombre_empresa = client_data.get('nombre') or client_data.get('name') or "Empresa Demo SA"
         
-        # --- DEFINICIÓN DINÁMICA DEL LÍMITE SEGÚN EL PLAN ---
         plan_db = str(client_data.get("plan", "bronze")).strip().lower()
         limites_por_plan = {"bronze": 10, "plata": 30, "gold": 100}
-        
-        # Si el plan existe en nuestro diccionario, toma ese valor; sino, usa el de la base o 100 por defecto
         limite_dinamico = limites_por_plan.get(plan_db, client_data.get("limite_datasets", 100))
         
         return {
@@ -80,7 +77,7 @@ def login(request: LoginRequest):
                 "name": nombre_empresa,
                 "slug": client_data.get("slug", "empresa_demo"),
                 "plan": plan_db,
-                "limite_datasets": limite_dinamico  # <--- Límite dinámico inyectado
+                "limite_datasets": limite_dinamico
             }
         }
     except Exception as e:
@@ -88,12 +85,21 @@ def login(request: LoginRequest):
 
 
 # =========================================================
-# ENDPOINT DE CONSULTAS
+# ENDPOINT DE CONSULTAS (UNIFICADO Y DINÁMICO)
 # =========================================================
 @router.post("/query")
 def query(request: QueryRequest):
+    connector = None
     try:
-        connector = DuckDBConnector()
+        # Selección dinámica: si viene URL externa usa SQLDatabaseConnector, sino DuckDB
+        if request.db_connection_url:
+            connector = SQLDatabaseConnector(
+                connection_url=request.db_connection_url,
+                schema=request.db_schema
+            )
+            connector.test_connection()
+        else:
+            connector = DuckDBConnector()
 
         response = answer_question(
             question=request.question,
@@ -108,6 +114,7 @@ def query(request: QueryRequest):
             llm=llm_service,
         )
 
+        # Validación opcional de errores devueltos por el pipeline
         if hasattr(response, "__dict__"):
             res_dict = response.__dict__
         elif isinstance(response, dict):
@@ -123,6 +130,70 @@ def query(request: QueryRequest):
     except Exception as e:
         traceback.print_exc()
         raise HTTPException(status_code=500, detail=f"Error al procesar la consulta: {str(e)}")
+    finally:
+        if connector:
+            connector.close()
+
+
+# =========================================================
+# ENDPOINT DE TEST DE CONEXIÓN
+# =========================================================
+@router.post("/connections/test")
+def test_connection(request: ConnectionTestRequest):
+    connector = None
+    try:
+        connector = SQLDatabaseConnector(
+            connection_url=request.db_connection_url,
+            schema=request.db_schema or "public"
+        )
+        connector.test_connection()
+        
+        # Extraemos los esquemas disponibles en la base de datos
+        inspector = inspect(connector.engine)
+        schemas = inspector.get_schema_names()
+        
+        # Si el usuario mandó un esquema específico, obtenemos las tablas de ese esquema. 
+        # Si no mandó ninguno, usamos el esquema por defecto.
+        target_schema = request.db_schema if request.db_schema else "public"
+        tables_list = inspector.get_table_names(schema=target_schema)
+        
+        return {
+            "success": True,
+            "message": "Conexión establecida correctamente",
+            "schemas": schemas,
+            "tables": tables_list
+        }
+    except Exception as e:
+        raise HTTPException(
+            status_code=400,
+            detail=f"No se pudo establecer la conexión: {str(e)}"
+        )
+    finally:
+        if connector:
+            connector.close()
+
+
+# Nuevo endpoint para obtener el preview de una tabla externa (simulando el DataFrame local)
+class TablePreviewRequest(BaseModel):
+    db_connection_url: str
+    db_schema: str
+    table_name: str
+
+@router.post("/connections/preview")
+def get_table_preview(request: TablePreviewRequest):
+    connector = None
+    try:
+        connector = SQLDatabaseConnector(
+            connection_url=request.db_connection_url,
+            schema=request.db_schema
+        )
+        df_preview = connector.preview(request.table_name, limit=50)
+        return {"success": True, "data": df_preview.to_dict(orient="records")}
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    finally:
+        if connector:
+            connector.close()
 
 
 # =========================================================
@@ -156,34 +227,24 @@ def upload_dataset(client_id: str = Form(...), file: UploadFile = File(...)):
         file_path = f"{client_id}/{file.filename}"
         file_bytes = file.file.read()
 
-        # 1. Subir a Supabase Storage (sobrescribiendo si ya existe con upsert=True)
-        storage_res = supabase.storage.from_("client-datasets").upload(
+        supabase.storage.from_("client-datasets").upload(
             path=file_path,
             file=file_bytes,
             file_options={"upsert": "true", "content-type": file.content_type}
         )
 
-        # 2. Verificar si ya existe un registro con este nombre para el cliente
-        existing = supabase.table("datasets").select("*").eq("client_id", client_id).eq("nombre_archivo", file.filename).execute()
+        supabase.table("datasets").delete().eq("client_id", client_id).eq("nombre_archivo", file.filename).execute()
 
-        if existing.data:
-            # Si ya existe, actualizamos la ruta o mantenemos el registro único
-            db_res = supabase.table("datasets").update({
-                "file_path": file_path
-            }).eq("client_id", client_id).eq("nombre_archivo", file.filename).execute()
-        else:
-            # Si no existe, insertamos el nuevo registro
-            db_res = supabase.table("datasets").insert({
-                "client_id": client_id,
-                "nombre_archivo": file.filename,
-                "file_path": file_path
-            }).execute()
+        db_res = supabase.table("datasets").insert({
+            "client_id": client_id,
+            "nombre_archivo": file.filename,
+            "file_path": file_path
+        }).execute()
 
         return {"success": True, "file_path": file_path}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error al subir dataset: {str(e)}")
 
-# --- IMPORTANTE: /download-url DEBE IR ANTES DE /{client_id} ---
 @router.get("/datasets/download-url")
 def get_dataset_download_url(client_id: str = Query(...), file_path: str = Query(...)):
     supabase = get_supabase_client()
@@ -195,7 +256,6 @@ def get_dataset_download_url(client_id: str = Query(...), file_path: str = Query
         
         res = supabase.storage.from_("client-datasets").create_signed_url(file_path, 60)
         
-        # Extracción segura compatible con cualquier versión de supabase-py
         if isinstance(res, str):
             signed_url = res
         elif isinstance(res, dict):

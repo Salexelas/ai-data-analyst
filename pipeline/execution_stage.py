@@ -243,12 +243,18 @@ def run_main_pipeline(ctx: dict, llm) -> dict:
     # 2. EJECUTAR SQL
     # =========================================================
 
-    result_df = _execute_inline_sql(
-        sql=sql_query,
-        inline_datasets=ctx.get("inline_datasets"),
-        semantic_layer=ctx.get("semantic_layer"),
-        inline_dataset_schema=ctx.get("inline_dataset_schema"),
-    )
+    connector = ctx.get("connector")
+    
+    # Si hay un conector externo SQL y no se mandaron datasets inline de archivos:
+    if connector and not ctx.get("inline_datasets"):
+        result_df = connector.execute(sql_query)
+    else:
+        result_df = _execute_inline_sql(
+            sql=sql_query,
+            inline_datasets=ctx.get("inline_datasets"),
+            semantic_layer=ctx.get("semantic_layer"),
+            inline_dataset_schema=ctx.get("inline_dataset_schema"),
+        )
 
     # =========================================================
     # 3. SERIALIZAR RESULTADOS
